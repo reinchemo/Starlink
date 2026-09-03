@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Starlink · General Connection Expenditure</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-wrapper">
+        <header class="app-header">
+            <div class="header-left">
+                <h1>📡 STARLINK</h1>
+                <span class="subtitle">GENERAL CONNECTION EXPENDITURE</span>
+            </div>
+            <div class="filter-panel">
+                <label>📅 From</label>
+                <input type="date" id="dateFrom" class="date-input">
+                <label>To</label>
+                <input type="date" id="dateTo" class="date-input">
+                <button id="applyFilterBtn" class="btn btn-filter">🔍 Apply</button>
+                <button id="clearFilterBtn" class="btn btn-filter">✕ Clear</button>
+                <button id="printPdfBtn" class="btn btn-pdf">📄 PDF</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="table-container">
+                <div id="tableWrapper" class="table-responsive"></div>
+            </div>
+
+            <div class="action-row">
+                <button id="addDateBtn" class="btn btn-add">➕ Add New Date Entry</button>
+                <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="totals-grid">
+                <div class="total-card" id="grandTotalCard">
+                    <span class="total-label">💰 GRAND TOTAL</span>
+                    <span class="total-value" id="grandTotal">0.00</span>
+                </div>
+            </div>
+            <p class="hint">* Enter amounts in any field — totals update automatically.</p>
+        </main>
+    </div>
+
+    <!-- Read More Modal -->
+    <div id="readMoreModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Full Description</h3>
+                <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Text will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
