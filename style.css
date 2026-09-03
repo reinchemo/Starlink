@@ -1,4 +1,4 @@
-/* style.css – Warm charcoal theme with brass and teal accents */
+/* style.css – With Dark/Light mode toggle */
 
 * {
     margin: 0;
@@ -7,24 +7,128 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
+
+/* ======================================== */
+
+
+/* THEME VARIABLES - DARK MODE (Default) */
+
+
+/* ======================================== */
+
+:root {
+    --bg-primary: #121212;
+    --bg-secondary: #1a1a1d;
+    --bg-tertiary: #232326;
+    --bg-card: rgba(18, 18, 18, 0.5);
+    --bg-input: rgba(255, 255, 255, 0.03);
+    --bg-input-focus: rgba(255, 255, 255, 0.06);
+    --bg-hover: rgba(79, 182, 168, 0.05);
+    --border-color: rgba(255, 255, 255, 0.05);
+    --border-light: rgba(255, 255, 255, 0.08);
+    --text-primary: #f2f0eb;
+    --text-secondary: #e8e4dc;
+    --text-muted: #9a958c;
+    --text-dim: #6b6860;
+    --text-input: #e8e4dc;
+    --accent-brass: #c89a5b;
+    --accent-teal: #4fb6a8;
+    --accent-teal-light: #5fc7bc;
+    --accent-teal-dark: #0d332f;
+    --accent-green: #6fcb93;
+    --accent-red: #e2685b;
+    --accent-red-bg: rgba(226, 104, 91, 0.08);
+    --shadow: rgba(0, 0, 0, 0.8);
+    --shadow-light: rgba(0, 0, 0, 0.3);
+    --modal-bg: rgba(0, 0, 0, 0.85);
+    --login-bg: radial-gradient(ellipse at top left, #1d1a15 0%, #121212 100%);
+    --table-header: linear-gradient(135deg, #241d13 0%, #16110b 100%);
+    --table-row: rgba(18, 18, 18, 0.3);
+    --total-row-bg: linear-gradient(135deg, #16110b 0%, #1a1a1d 100%);
+    --desc-bg: rgba(255, 255, 255, 0.02);
+    --desc-border: rgba(255, 255, 255, 0.04);
+}
+
+
+/* ======================================== */
+
+
+/* LIGHT MODE VARIABLES */
+
+
+/* ======================================== */
+
+body.light-mode {
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8eaed;
+    --bg-card: rgba(255, 255, 255, 0.8);
+    --bg-input: rgba(0, 0, 0, 0.03);
+    --bg-input-focus: rgba(0, 0, 0, 0.05);
+    --bg-hover: rgba(79, 182, 168, 0.08);
+    --border-color: rgba(0, 0, 0, 0.08);
+    --border-light: rgba(0, 0, 0, 0.12);
+    --text-primary: #1a1a1d;
+    --text-secondary: #2a2a2d;
+    --text-muted: #4a4a4d;
+    --text-dim: #6a6a6d;
+    --text-input: #1a1a1d;
+    --accent-brass: #a67a3a;
+    --accent-teal: #2a8a7a;
+    --accent-teal-light: #3a9a8a;
+    --accent-teal-dark: #1a5a4a;
+    --accent-green: #2a8a4a;
+    --accent-red: #c04a3a;
+    --accent-red-bg: rgba(192, 74, 58, 0.08);
+    --shadow: rgba(0, 0, 0, 0.15);
+    --shadow-light: rgba(0, 0, 0, 0.08);
+    --modal-bg: rgba(0, 0, 0, 0.6);
+    --login-bg: radial-gradient(ellipse at top left, #e8eaf0 0%, #d5d8e0 100%);
+    --table-header: linear-gradient(135deg, #e8e0d4 0%, #d8d0c4 100%);
+    --table-row: rgba(255, 255, 255, 0.6);
+    --total-row-bg: linear-gradient(135deg, #e8e0d4 0%, #d8d0c4 100%);
+    --desc-bg: rgba(255, 255, 255, 0.6);
+    --desc-border: rgba(0, 0, 0, 0.06);
+}
+
+
+/* ======================================== */
+
+
+/* BODY */
+
+
+/* ======================================== */
+
 body {
-    background: #121212;
+    background: var(--bg-primary);
     min-height: 100vh;
     display: flex;
     align-items: flex-start;
     justify-content: center;
     padding: 20px;
-    background-image: radial-gradient(ellipse at top left, #1d1a15 0%, #121212 100%);
+    background-image: var(--login-bg);
+    transition: background 0.3s ease, color 0.3s ease;
 }
+
+
+/* ======================================== */
+
+
+/* MAIN APP */
+
+
+/* ======================================== */
 
 .app-wrapper {
     max-width: 1550px;
     width: 100%;
-    background: linear-gradient(145deg, #1a1a1d 0%, #232326 100%);
+    background: var(--bg-secondary);
     border-radius: 28px;
-    box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: 0 20px 60px -12px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     padding: 28px 32px 36px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .app-header {
@@ -34,17 +138,18 @@ body {
     justify-content: space-between;
     margin-bottom: 24px;
     gap: 16px;
-    border-bottom: 2px solid rgba(200, 154, 91, 0.18);
+    border-bottom: 2px solid var(--border-color);
     padding-bottom: 20px;
-    background: linear-gradient(135deg, rgba(36, 29, 19, 0.55) 0%, rgba(18, 17, 16, 0.8) 100%);
+    background: var(--bg-tertiary);
     padding: 18px 22px;
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .header-left {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 14px;
     flex-wrap: wrap;
 }
@@ -52,20 +157,41 @@ body {
 .header-left h1 {
     font-weight: 800;
     font-size: 2rem;
-    color: #f2f0eb;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
     text-shadow: 0 0 30px rgba(200, 154, 91, 0.18);
+    transition: color 0.3s ease;
 }
 
 .subtitle {
     font-weight: 600;
-    color: #9a958c;
+    color: var(--text-muted);
     font-size: 0.85rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input);
     padding: 5px 18px;
     border-radius: 40px;
     letter-spacing: 0.5px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
+    transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+
+
+/* Theme Toggle Button */
+
+.btn-theme {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 6px 16px;
+    font-size: 0.75rem;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-theme:hover {
+    background: var(--bg-input-focus);
+    transform: scale(0.97);
 }
 
 .filter-panel {
@@ -73,46 +199,51 @@ body {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 12px;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-input);
     padding: 8px 16px 8px 18px;
     border-radius: 60px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .filter-panel label {
     font-weight: 600;
-    color: #9a958c;
+    color: var(--text-muted);
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .date-input {
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-light);
     border-radius: 30px;
     padding: 6px 12px;
     font-weight: 500;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-input);
     font-size: 0.8rem;
-    color: #f2f0eb;
+    color: var(--text-primary);
     outline: none;
     transition: 0.2s;
     max-width: 140px;
 }
 
 .date-input:focus {
-    border-color: #4fb6a8;
+    border-color: var(--accent-teal);
     box-shadow: 0 0 0 4px rgba(79, 182, 168, 0.12);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--bg-input-focus);
 }
 
 .date-input::-webkit-calendar-picker-indicator {
     filter: invert(0.8);
 }
 
+body.light-mode .date-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.2);
+}
+
 .btn {
     border: none;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input);
     padding: 6px 16px;
     border-radius: 40px;
     font-weight: 600;
@@ -122,14 +253,14 @@ body {
     gap: 6px;
     cursor: pointer;
     transition: 0.2s;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    color: #f2f0eb;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 2px 8px var(--shadow-light);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .btn-filter {
-    background: linear-gradient(135deg, #1a4a48 0%, #0d332f 100%);
-    color: #5fc7bc;
+    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
+    color: var(--accent-teal-light);
     border: 1px solid rgba(95, 199, 188, 0.2);
     padding: 6px 14px;
     font-size: 0.7rem;
@@ -142,7 +273,7 @@ body {
 
 .btn-pdf {
     background: linear-gradient(135deg, #2a2013 0%, #17110a 100%);
-    color: #c89a5b;
+    color: var(--accent-brass);
     padding: 6px 18px;
     font-size: 0.75rem;
     border: 1px solid rgba(200, 154, 91, 0.2);
@@ -156,7 +287,7 @@ body {
 
 .btn-add {
     background: linear-gradient(135deg, #2a2013 0%, #17110a 100%);
-    color: #c89a5b;
+    color: var(--accent-brass);
     padding: 12px 28px;
     font-size: 0.95rem;
     border: 1px solid rgba(200, 154, 91, 0.2);
@@ -169,25 +300,26 @@ body {
 }
 
 .btn-add-secondary {
-    background: rgba(255, 255, 255, 0.04);
-    color: #9a958c;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
     padding: 12px 28px;
     font-size: 0.95rem;
 }
 
 .btn-add-secondary:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg-input-focus);
     transform: scale(0.98);
 }
 
 .table-container {
     margin: 16px 0 14px;
     border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(18, 18, 18, 0.5);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px var(--shadow-light);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .table-responsive {
@@ -201,28 +333,31 @@ table {
     border-collapse: collapse;
     font-size: 0.85rem;
     min-width: 1300px;
-    color: #d8d4cc;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
 }
 
 th {
-    background: linear-gradient(135deg, #241d13 0%, #16110b 100%);
-    color: #c89a5b;
+    background: var(--table-header);
+    color: var(--accent-brass);
     font-weight: 700;
     padding: 14px 8px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
     white-space: nowrap;
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     vertical-align: middle;
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 td {
     padding: 4px 4px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
     vertical-align: middle;
-    background: rgba(18, 18, 18, 0.3);
+    background: var(--table-row);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 
@@ -233,45 +368,47 @@ td {
     flex-direction: column;
     gap: 6px;
     padding: 8px 6px;
-    background: rgba(18, 18, 18, 0.2);
+    background: var(--bg-input);
     border-radius: 6px;
     min-width: 120px;
+    transition: background 0.3s ease;
 }
 
 .column-group .field-header {
     font-size: 0.6rem;
     font-weight: 700;
-    color: #4fb6a8;
+    color: var(--accent-teal);
     text-transform: uppercase;
     letter-spacing: 0.8px;
     padding: 0 3px;
     margin-top: 2px;
+    transition: color 0.3s ease;
 }
 
 .column-group input,
 .column-group textarea {
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 8px 10px;
     font-size: 0.85rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-input);
     transition: 0.2s;
-    color: #e8e4dc;
+    color: var(--text-input);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .column-group input:focus,
 .column-group textarea:focus {
-    border-color: #4fb6a8;
+    border-color: var(--accent-teal);
     box-shadow: 0 0 0 4px rgba(79, 182, 168, 0.1);
     outline: none;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input-focus);
 }
 
 .column-group input::placeholder,
 .column-group textarea::placeholder {
-    color: #6b6860;
+    color: var(--text-dim);
 }
 
 
@@ -282,9 +419,9 @@ td {
     padding: 10px 12px;
     min-height: 44px;
     font-weight: 400;
-    color: #f2f0eb;
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border-color: var(--border-color);
     resize: vertical;
     overflow: auto;
     word-wrap: break-word;
@@ -293,16 +430,16 @@ td {
 }
 
 .column-group .desc-input:focus {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: #4fb6a8;
+    background: var(--bg-input-focus);
+    border-color: var(--accent-teal);
 }
 
 .column-group .trans-input,
 .column-group .ref-input {
     font-size: 0.82rem;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input);
+    border-color: var(--border-color);
     resize: vertical;
     overflow: auto;
     word-wrap: break-word;
@@ -311,16 +448,16 @@ td {
 }
 
 
-/* Amount input - allows manual typing, no arrows */
+/* Amount input */
 
 .column-group .amount-input {
     font-weight: 700;
     text-align: right;
     padding-right: 12px;
     font-size: 0.85rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.06);
-    color: #4fb6a8;
+    background: var(--bg-input);
+    border-color: var(--border-color);
+    color: var(--accent-teal);
     -moz-appearance: textfield;
     appearance: textfield;
     width: 100%;
@@ -333,7 +470,7 @@ td {
 }
 
 .column-group .amount-input:focus {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input-focus);
 }
 
 
@@ -341,22 +478,22 @@ td {
 
 .custom-column {
     background: rgba(79, 182, 168, 0.05);
-    border-left: 3px solid #4fb6a8;
+    border-left: 3px solid var(--accent-teal);
 }
 
 .custom-column .field-header {
-    color: #4fb6a8;
+    color: var(--accent-teal);
 }
 
 .custom-column .desc-input {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-input);
     border-color: rgba(79, 182, 168, 0.12);
 }
 
 .custom-column .delete-col-btn {
     background: none;
     border: none;
-    color: #e2685b;
+    color: var(--accent-red);
     font-size: 0.7rem;
     cursor: pointer;
     padding: 2px 8px;
@@ -367,23 +504,23 @@ td {
 }
 
 .custom-column .delete-col-btn:hover {
-    background: rgba(226, 104, 91, 0.12);
+    background: var(--accent-red-bg);
 }
 
 
-/* Description display - DOUBLED SIZE (36px → 72px) */
+/* Description display */
 
 .desc-display {
     font-size: 0.85rem;
     line-height: 1.5;
-    color: #e8e4dc;
+    color: var(--text-secondary);
     padding: 6px 8px;
     white-space: pre-wrap;
     word-wrap: break-word;
     font-weight: 400;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--desc-bg);
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--desc-border);
     cursor: pointer;
     transition: 0.2s;
     min-height: 72px;
@@ -396,12 +533,12 @@ td {
 }
 
 .desc-display:hover {
-    background: rgba(79, 182, 168, 0.05);
+    background: var(--bg-hover);
     border-color: rgba(79, 182, 168, 0.15);
 }
 
 .desc-display .read-more-btn {
-    color: #4fb6a8;
+    color: var(--accent-teal);
     background: none;
     border: none;
     font-size: 0.7rem;
@@ -415,7 +552,7 @@ td {
 }
 
 .desc-display .read-more-btn:hover {
-    background: rgba(79, 182, 168, 0.1);
+    background: var(--bg-hover);
     text-decoration: underline;
 }
 
@@ -429,16 +566,17 @@ td {
 /* Date header row */
 
 .date-header-row td {
-    background: linear-gradient(135deg, #241d13 0%, #16110b 100%);
+    background: var(--table-header);
     padding: 10px 16px;
     font-weight: 700;
     font-size: 0.9rem;
-    color: #f2f0eb;
+    color: var(--text-primary);
     border-top: 2px solid rgba(200, 154, 91, 0.12);
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .date-header-row td:first-child {
-    background: linear-gradient(135deg, #16110b 0%, #121212 100%);
+    background: var(--table-header);
 }
 
 .date-header-row .date-label {
@@ -449,8 +587,8 @@ td {
 }
 
 .date-header-row .date-label .date-badge {
-    background: linear-gradient(135deg, #241d13 0%, #16110b 100%);
-    color: #c89a5b;
+    background: var(--table-header);
+    color: var(--accent-brass);
     padding: 4px 18px;
     border-radius: 40px;
     font-size: 0.82rem;
@@ -464,7 +602,7 @@ td {
     border: 2px dashed rgba(200, 154, 91, 0.18);
     border-radius: 30px;
     padding: 4px 14px;
-    color: #c89a5b;
+    color: var(--accent-brass);
     cursor: pointer;
     font-size: 0.7rem;
     font-weight: 600;
@@ -478,7 +616,7 @@ td {
 }
 
 .date-header-row .add-col-btn-header:hover {
-    background: rgba(200, 154, 91, 0.06);
+    background: var(--bg-hover);
     border-color: rgba(200, 154, 91, 0.28);
 }
 
@@ -492,8 +630,9 @@ td {
     padding: 10px 4px;
     border-radius: 6px;
     font-size: 0.9rem;
-    color: #4fb6a8;
+    color: var(--accent-teal);
     min-width: 60px;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 
@@ -502,36 +641,37 @@ td {
 .delete-row-btn {
     background: none;
     border: none;
-    color: #6b6860;
+    color: var(--text-dim);
     font-size: 0.7rem;
     font-weight: 600;
     cursor: pointer;
     padding: 4px 12px;
     border-radius: 30px;
     transition: 0.15s;
-    background: rgba(226, 104, 91, 0.08);
+    background: var(--accent-red-bg);
     border: 1px solid rgba(226, 104, 91, 0.1);
 }
 
 .delete-row-btn:hover {
     background: rgba(226, 104, 91, 0.2);
-    color: #e2685b;
+    color: var(--accent-red);
 }
 
 
-/* Column totals row - HORIZONTAL */
+/* Column totals row */
 
 .col-total-row td {
-    background: linear-gradient(135deg, #16110b 0%, #1a1a1d 100%);
+    background: var(--total-row-bg);
     font-weight: 700;
-    border-top: 2px solid rgba(200, 154, 91, 0.1);
+    border-top: 2px solid var(--border-color);
     padding: 10px 8px;
     text-align: center;
-    color: #f2f0eb;
+    color: var(--text-primary);
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .col-total-row td:first-child {
-    background: linear-gradient(135deg, #16110b 0%, #121212 100%);
+    background: var(--total-row-bg);
     text-align: center;
     padding-right: 8px;
     font-size: 0.65rem;
@@ -542,7 +682,7 @@ td {
 .col-total-label {
     font-size: 0.7rem;
     font-weight: 700;
-    color: #c89a5b;
+    color: var(--accent-brass);
     letter-spacing: 1px;
     display: inline-block;
     padding: 2px 0;
@@ -554,8 +694,8 @@ td {
 .empty-state {
     text-align: center;
     padding: 50px 20px;
-    color: #6b6860;
-    background: rgba(18, 18, 18, 0.3);
+    color: var(--text-dim);
+    background: var(--bg-card);
 }
 
 .empty-state div {
@@ -598,25 +738,26 @@ td {
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 2px 10px var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .total-label {
     font-weight: 600;
-    color: #9a958c;
+    color: var(--text-muted);
     font-size: 0.85rem;
 }
 
 .total-value {
     font-weight: 800;
     font-size: 1.6rem;
-    color: #f2f0eb;
+    color: var(--text-primary);
 }
 
 .hint {
     font-size: 0.8rem;
-    color: #6b6860;
+    color: var(--text-dim);
     margin-top: 14px;
     padding-left: 8px;
 }
@@ -626,9 +767,9 @@ td {
 
 .transaction-separator td {
     padding: 0;
-    border-bottom: 2px dashed rgba(255, 255, 255, 0.04);
+    border-bottom: 2px dashed var(--border-color);
     height: 8px;
-    background: rgba(18, 18, 18, 0.2);
+    background: var(--bg-card);
 }
 
 
@@ -638,7 +779,7 @@ td {
     background: linear-gradient(135deg, rgba(79, 182, 168, 0.08) 0%, rgba(79, 182, 168, 0.04) 100%);
     padding: 10px 16px;
     font-weight: 600;
-    color: #4fb6a8;
+    color: var(--accent-teal);
     border-top: 1px solid rgba(79, 182, 168, 0.08);
 }
 
@@ -675,30 +816,30 @@ td {
 
 .date-total-row .date-total-actions .save-btn {
     background: linear-gradient(135deg, #1f5c3a 0%, #123d26 100%);
-    color: #6fcb93;
+    color: var(--accent-green);
     border: 1px solid rgba(111, 203, 147, 0.2);
 }
 
 .date-total-row .date-total-actions .save-btn.saved {
     background: rgba(111, 203, 147, 0.1);
-    color: #6fcb93;
+    color: var(--accent-green);
 }
 
 .date-total-row .date-total-actions .edit-btn {
-    background: linear-gradient(135deg, #1a4a48 0%, #0d332f 100%);
-    color: #5fc7bc;
+    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
+    color: var(--accent-teal-light);
     border: 1px solid rgba(95, 199, 188, 0.2);
 }
 
 .date-total-row .date-total-actions .reset-btn {
     background: linear-gradient(135deg, #5c2620 0%, #3d1712 100%);
-    color: #e2685b;
+    color: var(--accent-red);
     border: 1px solid rgba(226, 104, 91, 0.2);
 }
 
 .date-total-row .date-total-actions .delete-date-btn {
     background: linear-gradient(135deg, #5c1a1a 0%, #3d0a0a 100%);
-    color: #e2685b;
+    color: var(--accent-red);
     border: 1px solid rgba(226, 104, 91, 0.2);
 }
 
@@ -712,19 +853,19 @@ td {
 
 .date-total-row .date-total-label {
     font-weight: 600;
-    color: #9a958c;
+    color: var(--text-muted);
     font-size: 0.85rem;
 }
 
 .date-total-row .date-total-amount {
     font-weight: 800;
     font-size: 1.1rem;
-    color: #f2f0eb;
+    color: var(--text-primary);
 }
 
 .date-total-row .date-total-add-row .add-row-inline-btn {
-    background: linear-gradient(135deg, #1a4a48 0%, #0d332f 100%);
-    color: #5fc7bc;
+    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
+    color: var(--accent-teal-light);
     border: none;
     padding: 4px 16px;
     border-radius: 30px;
@@ -756,7 +897,7 @@ td {
     top: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
+    background: var(--modal-bg);
     backdrop-filter: blur(4px);
     overflow: auto;
     padding: 20px;
@@ -769,16 +910,17 @@ td {
 }
 
 .modal-content {
-    background: linear-gradient(145deg, #1a1a1d 0%, #232326 100%);
+    background: var(--bg-secondary);
     border-radius: 20px;
     max-width: 600px;
     width: 100%;
     max-height: 80vh;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 60px var(--shadow);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .modal-header {
@@ -786,12 +928,13 @@ td {
     justify-content: space-between;
     align-items: center;
     padding: 18px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: linear-gradient(135deg, #241d13 0%, #16110b 100%);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--table-header);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .modal-header h3 {
-    color: #c89a5b;
+    color: var(--accent-brass);
     font-size: 1.1rem;
     font-weight: 700;
     margin: 0;
@@ -800,7 +943,7 @@ td {
 .modal-close-btn {
     background: none;
     border: none;
-    color: #6b6860;
+    color: var(--text-dim);
     font-size: 1.8rem;
     cursor: pointer;
     transition: 0.2s;
@@ -809,7 +952,7 @@ td {
 }
 
 .modal-close-btn:hover {
-    color: #e2685b;
+    color: var(--accent-red);
     transform: scale(1.1);
 }
 
@@ -817,7 +960,7 @@ td {
     padding: 24px;
     overflow-y: auto;
     flex: 1;
-    color: #e8e4dc;
+    color: var(--text-secondary);
     font-size: 0.95rem;
     line-height: 1.8;
     white-space: pre-wrap;
@@ -906,10 +1049,10 @@ td {
     tbody tr {
         display: block;
         margin-bottom: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
         border-radius: 14px;
-        background: rgba(18, 18, 18, 0.5);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        background: var(--bg-card);
+        box-shadow: 0 4px 16px var(--shadow-light);
         overflow: hidden;
     }
     .date-header-row {
@@ -917,8 +1060,8 @@ td {
         margin-bottom: 16px;
         border: none;
         border-radius: 14px;
-        background: linear-gradient(135deg, #241d13 0%, #16110b 100%);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        background: var(--table-header);
+        box-shadow: 0 2px 8px var(--shadow-light);
     }
     .date-header-row td {
         display: flex;
@@ -989,18 +1132,18 @@ td {
     tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
         display: block;
         margin: 12px 8px;
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-color);
         border-radius: 12px;
-        background: rgba(18, 18, 18, 0.4);
+        background: var(--bg-card);
         padding: 10px 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 2px 8px var(--shadow-light);
     }
     td {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         border: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border-color);
         padding: 8px 10px;
         background: transparent;
         gap: 6px;
@@ -1012,13 +1155,13 @@ td {
         content: attr(data-label);
         font-weight: 700;
         font-size: 0.6rem;
-        color: #c89a5b;
+        color: var(--accent-brass);
         text-transform: uppercase;
         letter-spacing: 0.8px;
         width: 100%;
         flex-shrink: 0;
         padding-bottom: 3px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid var(--border-color);
         margin-bottom: 3px;
     }
     td:first-child:before {
@@ -1029,9 +1172,9 @@ td {
         margin-bottom: 0;
     }
     td:first-child {
-        background: rgba(18, 18, 18, 0.2);
+        background: var(--bg-card);
         font-size: 0.7rem;
-        color: #6b6860;
+        color: var(--text-dim);
         justify-content: center;
         padding: 6px;
     }
@@ -1046,31 +1189,31 @@ td {
         font-size: 0.5rem;
         letter-spacing: 0.8px;
         padding: 3px 0;
-        color: #4fb6a8;
+        color: var(--accent-teal);
     }
     .column-group input,
     .column-group textarea {
         font-size: 0.8rem;
         padding: 8px 10px;
         border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        background: var(--bg-input);
     }
     .column-group .desc-input {
         font-size: 0.85rem;
         padding: 10px 12px;
         min-height: 44px;
-        background: rgba(255, 255, 255, 0.03);
-        border-color: rgba(255, 255, 255, 0.06);
+        background: var(--bg-input);
+        border-color: var(--border-color);
     }
     .desc-display {
         font-size: 0.8rem;
         padding: 4px 6px;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.03);
+        background: var(--desc-bg);
+        border: 1px solid var(--desc-border);
         border-radius: 8px;
         width: 100%;
-        color: #e8e4dc;
+        color: var(--text-secondary);
         min-height: 60px;
         max-height: 60px;
     }
@@ -1081,7 +1224,7 @@ td {
         border-radius: 8px;
         text-align: center;
         font-weight: 700;
-        color: #4fb6a8;
+        color: var(--accent-teal);
     }
     .transaction-separator {
         display: none;
@@ -1090,14 +1233,14 @@ td {
         display: flex;
         justify-content: space-between;
         padding: 8px 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid var(--border-color);
         background: transparent;
     }
     .col-total-row td:before {
         content: attr(data-label);
         font-weight: 600;
         font-size: 0.6rem;
-        color: #c89a5b;
+        color: var(--accent-brass);
         text-transform: uppercase;
         width: auto;
         border-bottom: none;
@@ -1109,7 +1252,7 @@ td {
         width: 0;
     }
     .col-total-row td:first-child {
-        background: linear-gradient(135deg, #16110b 0%, #121212 100%);
+        background: var(--total-row-bg);
         border-radius: 8px 8px 0 0;
         width: 100%;
         min-width: unset;
