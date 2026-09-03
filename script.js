@@ -1,4 +1,4 @@
-// script.js – With Save Column functionality
+// script.js – With Save Column functionality and Theme Toggle
 
 (function() {
         "use strict";
@@ -23,7 +23,7 @@
         let nextColId = 1;
         let savedDates = {};
         let editModes = {};
-        let savedCustomColumns = []; // Permanently saved custom columns
+        let savedCustomColumns = [];
 
         let dateFrom = '';
         let dateTo = '';
@@ -42,15 +42,46 @@
         const modalBody = document.getElementById('modalBody');
         const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-        function isNumericColumn(colKey) {
-            return NUMERIC_KEYS.includes(colKey) || customColumns.some(c => c.key === colKey) || savedCustomColumns.some(c => c.key === colKey);
+        // ========================================
+        // THEME TOGGLE
+        // ========================================
+        const themeToggle = document.getElementById('themeToggle');
+
+        function getStoredTheme() {
+            return localStorage.getItem('starlink_theme') || 'dark';
         }
 
-        function getNumericKeys() {
-            const keys = [...NUMERIC_KEYS];
-            customColumns.forEach(c => keys.push(c.key));
-            savedCustomColumns.forEach(c => keys.push(c.key));
-            return keys;
+        function setStoredTheme(theme) {
+            localStorage.setItem('starlink_theme', theme);
+        }
+
+        function applyTheme(theme) {
+            if (theme === 'light') {
+                document.body.classList.add('light-mode');
+                themeToggle.textContent = '🌙 Dark';
+            } else {
+                document.body.classList.remove('light-mode');
+                themeToggle.textContent = '☀️ Light';
+            }
+            setStoredTheme(theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = getStoredTheme();
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+
+        // Initialize theme
+        const savedTheme = getStoredTheme();
+        applyTheme(savedTheme);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // ========================================
+        // MAIN APP FUNCTIONS
+        // ========================================
+        function isNumericColumn(colKey) {
+            return NUMERIC_KEYS.includes(colKey) || customColumns.some(c => c.key === colKey) || savedCustomColumns.some(c => c.key === colKey);
         }
 
         function getAllColumns() {
@@ -155,7 +186,6 @@
             return row;
         }
 
-        // ---------- Add Custom Column (Temporary) ----------
         function addCustomColumn() {
             const colName = prompt('Enter the name of the new expenditure column:', 'New Expenditure');
             if (!colName || colName.trim() === '') return;
@@ -182,13 +212,11 @@
             render();
         }
 
-        // ---------- Save Custom Column (Permanent) ----------
         function saveCustomColumn(colKey) {
             const colIndex = customColumns.findIndex(c => c.key === colKey);
             if (colIndex === -1) return;
 
             const colToSave = customColumns[colIndex];
-            // Create a new permanent column
             const savedCol = {
                 key: 'saved_' + nextColId++ + '_' + colToSave.label.replace(/\s+/g, '_').toLowerCase(),
                 label: colToSave.label,
@@ -196,7 +224,6 @@
                 isSaved: true
             };
 
-            // Copy data from temporary column to saved column
             data.forEach(group => {
                 group.rows.forEach(row => {
                     row[savedCol.key + '_desc'] = row[colToSave.key + '_desc'] || '';
@@ -207,11 +234,8 @@
             });
 
             savedCustomColumns.push(savedCol);
-
-            // Remove temporary column
             customColumns.splice(colIndex, 1);
 
-            // Clean up temp data
             data.forEach(group => {
                 group.rows.forEach(row => {
                     delete row[colToSave.key + '_desc'];
@@ -224,9 +248,7 @@
             render();
         }
 
-        // ---------- Remove Custom Column ----------
         function removeCustomColumn(colKey) {
-            // Check if it's a saved column
             const savedIndex = savedCustomColumns.findIndex(c => c.key === colKey);
             if (savedIndex !== -1) {
                 if (!confirm('Delete this saved column? All data in this column will be lost.')) return;
@@ -243,7 +265,6 @@
                 return;
             }
 
-            // Check if it's a temporary column
             const tempIndex = customColumns.findIndex(c => c.key === colKey);
             if (tempIndex !== -1) {
                 if (!confirm('Delete this temporary column? Data will be lost if not saved.')) return;
@@ -352,8 +373,8 @@
         if (filtered.length === 0) {
             html += `<tr><td colspan="${allColumns.length + 3}" class="empty-state">
                 <span class="icon">📭</span>
-                <div style="color:#f2f0eb;">No records found</div>
-                <div style="font-size:0.85rem; margin-top:8px; color:#6b6860;">Adjust your date filter or add new entries</div>
+                <div style="color:var(--text-primary);">No records found</div>
+                <div style="font-size:0.85rem; margin-top:8px; color:var(--text-dim);">Adjust your date filter or add new entries</div>
             </td></tr>`;
         } else {
             filtered.forEach((group) => {
@@ -373,7 +394,7 @@
                 html += `</tr>`;
 
                 if (group.rows.length === 0) {
-                    html += `<tr><td colspan="${allColumns.length + 3}" style="text-align:center; padding:16px; color:#6b6860; background:rgba(18,18,18,0.2);">
+                    html += `<tr><td colspan="${allColumns.length + 3}" style="text-align:center; padding:16px; color:var(--text-dim); background:var(--bg-card);">
                         No transactions — click "Add Row" to add
                     </td></tr>`;
                 } else {
@@ -383,7 +404,7 @@
                         }
 
                         html += `<tr>`;
-                        html += `<td style="background:rgba(18,18,18,0.2); text-align:center; color:#6b6860; font-size:0.7rem;" data-label="">▸</td>`;
+                        html += `<td style="background:var(--bg-card); text-align:center; color:var(--text-dim); font-size:0.7rem;" data-label="">▸</td>`;
 
                         allColumns.forEach(col => {
                             const isCustom = col.isCustom || false;
@@ -436,7 +457,7 @@
                                     <span class="field-header">Amount</span>
                                     ${showEditMode ? 
                                         `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
-                                        `<div class="desc-display" style="font-weight:700; text-align:right; color:#4fb6a8;">${formatNumber(amountVal).toFixed(2)}</div>`}
+                                        `<div class="desc-display" style="font-weight:700; text-align:right; color:var(--accent-teal);">${formatNumber(amountVal).toFixed(2)}</div>`}
                                     ${isCustom ? 
                                         `<div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
                                             ${!isSavedCol ? `<button class="save-col-btn" data-col-key="${col.key}" title="Save this column permanently">💾 Save</button>` : ''}
@@ -483,13 +504,13 @@
         allColumns.forEach(col => {
             if (isNumericColumn(col.key)) {
                 const val = colTotals[col.key] || 0;
-                html += `<td data-label="${col.label}" style="color:#f2f0eb;">${val.toFixed(2)}</td>`;
+                html += `<td data-label="${col.label}" style="color:var(--text-primary);">${val.toFixed(2)}</td>`;
             } else {
-                html += `<td data-label="${col.label}" style="color:#f2f0eb;">0.00</td>`;
+                html += `<td data-label="${col.label}" style="color:var(--text-primary);">0.00</td>`;
             }
         });
         const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
-        html += `<td data-label="Total" style="font-weight:700; color:#4fb6a8;">${totalColSum.toFixed(2)}</td>`;
+        html += `<td data-label="Total" style="font-weight:700; color:var(--accent-teal);">${totalColSum.toFixed(2)}</td>`;
         html += `<td></td>`;
         html += `</tr>`;
 
@@ -575,7 +596,6 @@
             btn.addEventListener('click', addCustomColumn);
         });
 
-        // Save Column buttons
         document.querySelectorAll('.save-col-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const colKey = e.target.dataset.colKey;
@@ -703,7 +723,6 @@
         render();
     }
 
-    // ---------- PDF Export ----------
     function exportPdf() {
         const filtered = getFilteredData();
         const allColumns = getAllColumns();
