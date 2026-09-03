@@ -487,7 +487,6 @@
                         <span class="date-total-label">Date Total Amount:</span>
                         <span class="date-total-amount">${dateTotal.toFixed(2)}</span>
                         <div class="date-total-add-row">
-                            <button class="add-row-inline-btn" data-date-id="${group.id}">➕ Add Row</button>
                         </div>
                     </div>
                 </div>`;
