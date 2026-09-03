@@ -386,9 +386,7 @@
                 html += `<td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
                 html += `<div class="date-label">
                     <span class="date-badge">📅 ${group.date || 'No date'}</span>
-                    <button class="add-col-btn-header" title="Add a new custom expenditure column">
-                        ➕ Add Column
-                    </button>
+                  
                 </div>`;
                 html += `</td>`;
                 html += `</tr>`;
