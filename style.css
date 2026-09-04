@@ -1,4 +1,4 @@
-/* style.css – With Dark/Light mode toggle */
+/* style.css – Navy blue theme with brass and teal accents */
 
 * {
     margin: 0;
@@ -7,25 +7,16 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-
-/* ======================================== */
-
-
-/* THEME VARIABLES - DARK MODE (Default) */
-
-
-/* ======================================== */
-
 :root {
-    --bg-primary: #121212;
-    --bg-secondary: #1a1a1d;
-    --bg-tertiary: #232326;
-    --bg-card: rgba(18, 18, 18, 0.5);
-    --bg-input: rgba(255, 255, 255, 0.03);
-    --bg-input-focus: rgba(255, 255, 255, 0.06);
-    --bg-hover: rgba(79, 182, 168, 0.05);
-    --border-color: rgba(255, 255, 255, 0.05);
-    --border-light: rgba(255, 255, 255, 0.08);
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #0f1a2e;
+    --bg-tertiary: #162040;
+    --bg-card: rgba(15, 26, 46, 0.7);
+    --bg-input: rgba(255, 255, 255, 0.04);
+    --bg-input-focus: rgba(255, 255, 255, 0.08);
+    --bg-hover: rgba(79, 182, 168, 0.08);
+    --border-color: rgba(255, 255, 255, 0.06);
+    --border-light: rgba(255, 255, 255, 0.10);
     --text-primary: #f2f0eb;
     --text-secondary: #e8e4dc;
     --text-muted: #9a958c;
@@ -41,38 +32,29 @@
     --shadow: rgba(0, 0, 0, 0.8);
     --shadow-light: rgba(0, 0, 0, 0.3);
     --modal-bg: rgba(0, 0, 0, 0.85);
-    --login-bg: radial-gradient(ellipse at top left, #1d1a15 0%, #121212 100%);
-    --table-header: linear-gradient(135deg, #241d13 0%, #16110b 100%);
-    --table-row: rgba(18, 18, 18, 0.3);
-    --total-row-bg: linear-gradient(135deg, #16110b 0%, #1a1a1d 100%);
+    --login-bg: radial-gradient(ellipse at top left, #0a1a3a 0%, #0a0e1a 100%);
+    --table-header: linear-gradient(135deg, #0a1a3a 0%, #0a2a4a 100%);
+    --table-row: rgba(10, 26, 46, 0.3);
+    --total-row-bg: linear-gradient(135deg, #0a1a3a 0%, #0a2a4a 100%);
     --desc-bg: rgba(255, 255, 255, 0.02);
     --desc-border: rgba(255, 255, 255, 0.04);
 }
 
-
-/* ======================================== */
-
-
-/* LIGHT MODE VARIABLES */
-
-
-/* ======================================== */
-
 body.light-mode {
-    --bg-primary: #f0f2f5;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #e8eaed;
+    --bg-primary: #e8edf5;
+    --bg-secondary: #f0f4fa;
+    --bg-tertiary: #dce4ee;
     --bg-card: rgba(255, 255, 255, 0.8);
     --bg-input: rgba(0, 0, 0, 0.03);
     --bg-input-focus: rgba(0, 0, 0, 0.05);
     --bg-hover: rgba(79, 182, 168, 0.08);
     --border-color: rgba(0, 0, 0, 0.08);
     --border-light: rgba(0, 0, 0, 0.12);
-    --text-primary: #1a1a1d;
-    --text-secondary: #2a2a2d;
-    --text-muted: #4a4a4d;
-    --text-dim: #6a6a6d;
-    --text-input: #1a1a1d;
+    --text-primary: #0a1a2e;
+    --text-secondary: #1a2a3e;
+    --text-muted: #3a5a7a;
+    --text-dim: #6a7a8a;
+    --text-input: #0a1a2e;
     --accent-brass: #a67a3a;
     --accent-teal: #2a8a7a;
     --accent-teal-light: #3a9a8a;
@@ -82,23 +64,14 @@ body.light-mode {
     --accent-red-bg: rgba(192, 74, 58, 0.08);
     --shadow: rgba(0, 0, 0, 0.15);
     --shadow-light: rgba(0, 0, 0, 0.08);
-    --modal-bg: rgba(0, 0, 0, 0.6);
-    --login-bg: radial-gradient(ellipse at top left, #e8eaf0 0%, #d5d8e0 100%);
-    --table-header: linear-gradient(135deg, #e8e0d4 0%, #d8d0c4 100%);
+    --modal-bg: rgba(0, 0, 0, 0.5);
+    --login-bg: radial-gradient(ellipse at top left, #d4dce8 0%, #c4cce0 100%);
+    --table-header: linear-gradient(135deg, #c4d4e4 0%, #b4c8dc 100%);
     --table-row: rgba(255, 255, 255, 0.6);
-    --total-row-bg: linear-gradient(135deg, #e8e0d4 0%, #d8d0c4 100%);
+    --total-row-bg: linear-gradient(135deg, #c4d4e4 0%, #b4c8dc 100%);
     --desc-bg: rgba(255, 255, 255, 0.6);
     --desc-border: rgba(0, 0, 0, 0.06);
 }
-
-
-/* ======================================== */
-
-
-/* BODY */
-
-
-/* ======================================== */
 
 body {
     background: var(--bg-primary);
@@ -109,6 +82,191 @@ body {
     padding: 20px;
     background-image: var(--login-bg);
     transition: background 0.3s ease, color 0.3s ease;
+}
+
+
+/* ======================================== */
+
+
+/* LOGIN SCREEN */
+
+
+/* ======================================== */
+
+.login-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--login-bg);
+    z-index: 9999;
+    padding: 20px;
+    transition: background 0.3s ease;
+}
+
+.login-container {
+    max-width: 420px;
+    width: 100%;
+    background: var(--bg-secondary);
+    border-radius: 28px;
+    box-shadow: 0 20px 60px -12px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 0;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.login-header {
+    background: var(--table-header);
+    padding: 30px 30px 20px;
+    text-align: center;
+    border-bottom: 2px solid var(--border-color);
+    transition: background 0.3s ease;
+}
+
+.login-icon {
+    font-size: 2.8rem;
+}
+
+.login-header h1 {
+    font-weight: 800;
+    font-size: 2.2rem;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.login-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.login-sub {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 18px;
+    background: rgba(200, 154, 91, 0.15);
+    color: var(--accent-brass);
+    border-radius: 40px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border: 1px solid rgba(200, 154, 91, 0.15);
+}
+
+.login-body {
+    padding: 30px 30px 20px;
+}
+
+.login-error {
+    background: var(--accent-red-bg);
+    color: var(--accent-red);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    border: 1px solid rgba(226, 104, 91, 0.15);
+}
+
+.login-success {
+    background: rgba(111, 203, 147, 0.15);
+    color: var(--accent-green);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    border: 1px solid rgba(111, 203, 147, 0.15);
+}
+
+.login-input-group {
+    margin-bottom: 18px;
+}
+
+.login-input-group label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.login-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 1rem;
+    outline: none;
+    transition: 0.2s;
+}
+
+.login-input:focus {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 4px rgba(79, 182, 168, 0.12);
+    background: var(--bg-input-focus);
+}
+
+.login-input::placeholder {
+    color: var(--text-dim);
+}
+
+.login-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
+    color: var(--accent-teal-light);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+    border: 1px solid rgba(95, 199, 188, 0.2);
+}
+
+.login-btn:hover {
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
+}
+
+.login-links {
+    text-align: center;
+    margin-top: 16px;
+}
+
+.forgot-link {
+    background: none;
+    border: none;
+    color: var(--accent-teal);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.2s;
+    text-decoration: underline;
+    padding: 4px 8px;
+}
+
+.forgot-link:hover {
+    color: var(--accent-teal-light);
+}
+
+.login-footer {
+    padding: 16px 30px;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+}
+
+.login-footer span {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
 }
 
 
@@ -147,6 +305,39 @@ body {
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 
+
+/* Change Password link on login */
+
+.login-links {
+    text-align: center;
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.login-links .forgot-link {
+    background: none;
+    border: none;
+    color: var(--accent-teal);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.2s;
+    text-decoration: underline;
+    padding: 4px 8px;
+}
+
+.login-links .forgot-link:hover {
+    color: var(--accent-teal-light);
+}
+
+.login-links span {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}
+
 .header-left {
     display: flex;
     align-items: center;
@@ -175,8 +366,15 @@ body {
     transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
 }
 
-
-/* Theme Toggle Button */
+.user-badge {
+    font-weight: 600;
+    color: var(--accent-teal-light);
+    font-size: 0.8rem;
+    background: rgba(79, 182, 168, 0.12);
+    padding: 4px 16px;
+    border-radius: 40px;
+    border: 1px solid rgba(79, 182, 168, 0.15);
+}
 
 .btn-theme {
     background: var(--bg-input);
@@ -192,6 +390,54 @@ body {
 .btn-theme:hover {
     background: var(--bg-input-focus);
     transform: scale(0.97);
+}
+
+.btn-admin {
+    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
+    color: var(--accent-teal-light);
+    border: 1px solid rgba(95, 199, 188, 0.2);
+    padding: 6px 16px;
+    font-size: 0.7rem;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-admin:hover {
+    transform: scale(0.97);
+    box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
+}
+
+.btn-password {
+    background: linear-gradient(135deg, #2a3a6a 0%, #1a2a5a 100%);
+    color: #7a9aff;
+    border: 1px solid rgba(122, 154, 255, 0.15);
+    padding: 6px 16px;
+    font-size: 0.7rem;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-password:hover {
+    transform: scale(0.97);
+    box-shadow: 0 4px 12px rgba(122, 154, 255, 0.14);
+}
+
+.btn-logout {
+    background: linear-gradient(135deg, #5c1a1a 0%, #3d0a0a 100%);
+    color: var(--accent-red);
+    border: 1px solid rgba(226, 104, 91, 0.2);
+    padding: 6px 16px;
+    font-size: 0.7rem;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-logout:hover {
+    transform: scale(0.97);
+    box-shadow: 0 4px 12px rgba(226, 104, 91, 0.14);
 }
 
 .filter-panel {
@@ -271,8 +517,18 @@ body.light-mode .date-input::-webkit-calendar-picker-indicator {
     box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
 }
 
+.btn-filter-outline {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+.btn-filter-outline:hover {
+    background: var(--bg-input-focus);
+}
+
 .btn-pdf {
-    background: linear-gradient(135deg, #2a2013 0%, #17110a 100%);
+    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
     color: var(--accent-brass);
     padding: 6px 18px;
     font-size: 0.75rem;
@@ -286,7 +542,7 @@ body.light-mode .date-input::-webkit-calendar-picker-indicator {
 }
 
 .btn-add {
-    background: linear-gradient(135deg, #2a2013 0%, #17110a 100%);
+    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
     color: var(--accent-brass);
     padding: 12px 28px;
     font-size: 0.95rem;
@@ -311,6 +567,15 @@ body.light-mode .date-input::-webkit-calendar-picker-indicator {
     background: var(--bg-input-focus);
     transform: scale(0.98);
 }
+
+
+/* ======================================== */
+
+
+/* TABLE STYLES */
+
+
+/* ======================================== */
 
 .table-container {
     margin: 16px 0 14px;
@@ -361,7 +626,7 @@ td {
 }
 
 
-/* Column group styling */
+/* Column group */
 
 .column-group {
     display: flex;
@@ -383,6 +648,31 @@ td {
     padding: 0 3px;
     margin-top: 2px;
     transition: color 0.3s ease;
+}
+
+
+/* Editable column name input */
+
+.column-group .col-name-input {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent-brass);
+    background: transparent;
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+    padding: 2px 6px;
+    width: 100%;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: 0.2s;
+}
+
+.column-group .col-name-input:focus {
+    border-color: var(--accent-teal);
+    background: var(--bg-input-focus);
+    outline: none;
+    color: var(--text-primary);
 }
 
 .column-group input,
@@ -411,9 +701,6 @@ td {
     color: var(--text-dim);
 }
 
-
-/* Description textarea */
-
 .column-group .desc-input {
     font-size: 0.9rem;
     padding: 10px 12px;
@@ -434,8 +721,7 @@ td {
     border-color: var(--accent-teal);
 }
 
-.column-group .trans-input,
-.column-group .ref-input {
+.column-group .trans-ref-input {
     font-size: 0.82rem;
     padding: 8px 10px;
     background: var(--bg-input);
@@ -469,6 +755,10 @@ td {
     margin: 0;
 }
 
+.column-group .amount-input[type="number"] {
+    -moz-appearance: textfield;
+}
+
 .column-group .amount-input:focus {
     background: var(--bg-input-focus);
 }
@@ -488,23 +778,6 @@ td {
 .custom-column .desc-input {
     background: var(--bg-input);
     border-color: rgba(79, 182, 168, 0.12);
-}
-
-.custom-column .delete-col-btn {
-    background: none;
-    border: none;
-    color: var(--accent-red);
-    font-size: 0.7rem;
-    cursor: pointer;
-    padding: 2px 8px;
-    border-radius: 20px;
-    transition: 0.15s;
-    align-self: flex-end;
-    margin-top: 2px;
-}
-
-.custom-column .delete-col-btn:hover {
-    background: var(--accent-red-bg);
 }
 
 
@@ -621,7 +894,7 @@ td {
 }
 
 
-/* Row total column */
+/* Row total */
 
 .row-total-col {
     font-weight: 700;
@@ -634,9 +907,6 @@ td {
     min-width: 60px;
     transition: background 0.3s ease, color 0.3s ease;
 }
-
-
-/* Delete row button */
 
 .delete-row-btn {
     background: none;
@@ -658,7 +928,7 @@ td {
 }
 
 
-/* Column totals row */
+/* Column totals */
 
 .col-total-row td {
     background: var(--total-row-bg);
@@ -763,7 +1033,7 @@ td {
 }
 
 
-/* Separator line */
+/* Separator */
 
 .transaction-separator td {
     padding: 0;
@@ -773,7 +1043,7 @@ td {
 }
 
 
-/* Date total row */
+/* Date total row - without Save button */
 
 .date-total-row td {
     background: linear-gradient(135deg, rgba(79, 182, 168, 0.08) 0%, rgba(79, 182, 168, 0.04) 100%);
@@ -814,27 +1084,13 @@ td {
     transform: scale(0.96);
 }
 
-.date-total-row .date-total-actions .save-btn {
-    background: linear-gradient(135deg, #1f5c3a 0%, #123d26 100%);
-    color: var(--accent-green);
-    border: 1px solid rgba(111, 203, 147, 0.2);
-}
 
-.date-total-row .date-total-actions .save-btn.saved {
-    background: rgba(111, 203, 147, 0.1);
-    color: var(--accent-green);
-}
+/* Removed Save button, keeping Edit, Delete, Add Row */
 
 .date-total-row .date-total-actions .edit-btn {
     background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
     color: var(--accent-teal-light);
     border: 1px solid rgba(95, 199, 188, 0.2);
-}
-
-.date-total-row .date-total-actions .reset-btn {
-    background: linear-gradient(135deg, #5c2620 0%, #3d1712 100%);
-    color: var(--accent-red);
-    border: 1px solid rgba(226, 104, 91, 0.2);
 }
 
 .date-total-row .date-total-actions .delete-date-btn {
@@ -881,13 +1137,7 @@ td {
 }
 
 
-/* ======================================== */
-
-
-/* READ MORE MODAL */
-
-
-/* ======================================== */
+/* Modals */
 
 .modal {
     display: none;
@@ -973,10 +1223,136 @@ td {
 }
 
 
+/* User management */
+
+.user-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s ease;
+}
+
+.user-item:hover {
+    background: var(--bg-hover);
+}
+
+.user-item .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-item .user-info .user-icon {
+    font-size: 1.2rem;
+    color: var(--accent-teal);
+}
+
+.user-item .user-info .user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-item .user-info .user-details .username {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.user-item .user-info .user-details .user-role {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-item .user-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.user-item .user-actions .btn-edit-user {
+    background: none;
+    border: none;
+    color: var(--accent-teal);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    transition: 0.15s;
+    background: rgba(79, 182, 168, 0.08);
+}
+
+.user-item .user-actions .btn-edit-user:hover {
+    background: rgba(79, 182, 168, 0.15);
+}
+
+.user-item .user-actions .btn-delete-user {
+    background: none;
+    border: none;
+    color: var(--accent-red);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    transition: 0.15s;
+    background: var(--accent-red-bg);
+}
+
+.user-item .user-actions .btn-delete-user:hover {
+    background: rgba(226, 104, 91, 0.2);
+}
+
+.user-item.current-user {
+    background: rgba(79, 182, 168, 0.06);
+    border-left: 3px solid var(--accent-teal);
+}
+
+.user-item .user-info .user-details .current-badge {
+    font-size: 0.6rem;
+    color: var(--accent-teal);
+    font-weight: 600;
+}
+
+
+/* Custom column buttons */
+
+.save-col-btn {
+    background: rgba(79, 182, 168, 0.1);
+    border: 1px solid rgba(79, 182, 168, 0.15);
+    border-radius: 20px;
+    padding: 2px 10px;
+    color: var(--accent-teal);
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.save-col-btn:hover {
+    background: rgba(79, 182, 168, 0.18);
+}
+
+.delete-col-btn {
+    background: var(--accent-red-bg);
+    border: 1px solid rgba(226, 104, 91, 0.1);
+    border-radius: 20px;
+    padding: 2px 10px;
+    color: var(--accent-red);
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.delete-col-btn:hover {
+    background: rgba(226, 104, 91, 0.2);
+}
+
+
 /* ======================================== */
 
 
-/* MOBILE VERTICAL LAYOUT */
+/* RESPONSIVE - PHONE FIRST WITH BIGGER BUTTONS */
 
 
 /* ======================================== */
@@ -989,36 +1365,80 @@ td {
         flex-direction: column;
         align-items: stretch;
         padding: 12px 16px;
+        gap: 12px;
     }
     .header-left h1 {
         font-size: 1.4rem;
+    }
+    .header-left {
+        gap: 10px;
     }
     .subtitle {
         font-size: 0.65rem;
         padding: 4px 14px;
     }
+    .user-badge {
+        font-size: 0.75rem;
+        padding: 5px 14px;
+    }
+    /* Bigger buttons on mobile */
+    .btn {
+        font-size: 0.85rem;
+        padding: 10px 18px;
+        min-height: 44px;
+        border-radius: 12px;
+    }
+    .btn-theme,
+    .btn-admin,
+    .btn-password,
+    .btn-logout {
+        font-size: 0.8rem;
+        padding: 8px 16px;
+        min-height: 40px;
+    }
+    .header-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-start;
+    }
     .filter-panel {
         border-radius: 40px;
         justify-content: center;
-        padding: 10px 14px;
+        padding: 12px 14px;
         flex-wrap: wrap;
+        gap: 8px;
+    }
+    .filter-panel label {
+        font-size: 0.8rem;
     }
     .date-input {
         max-width: 100%;
         width: 100%;
+        font-size: 0.9rem;
+        padding: 10px 12px;
+        min-height: 44px;
     }
     .btn-filter,
+    .btn-filter-outline,
     .btn-pdf {
-        width: 100%;
+        flex: 1;
         justify-content: center;
+        font-size: 0.8rem;
+        padding: 10px 14px;
+        min-height: 44px;
     }
     .action-row {
         flex-direction: column;
+        gap: 10px;
     }
     .btn-add,
     .btn-add-secondary {
         width: 100%;
         justify-content: center;
+        font-size: 0.9rem;
+        padding: 14px 20px;
+        min-height: 50px;
     }
     .totals-grid {
         flex-direction: column;
@@ -1026,6 +1446,13 @@ td {
     .total-card {
         justify-content: space-between;
         width: 100%;
+        padding: 14px 20px;
+    }
+    .total-label {
+        font-size: 0.9rem;
+    }
+    .total-value {
+        font-size: 1.4rem;
     }
     table,
     thead,
@@ -1042,22 +1469,24 @@ td {
     table {
         min-width: unset;
         width: 100%;
+        font-size: 0.9rem;
     }
     thead tr {
         display: none;
     }
     tbody tr {
         display: block;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         border: 1px solid var(--border-color);
         border-radius: 14px;
         background: var(--bg-card);
         box-shadow: 0 4px 16px var(--shadow-light);
         overflow: hidden;
+        padding: 4px;
     }
     .date-header-row {
         display: block;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         border: none;
         border-radius: 14px;
         background: var(--table-header);
@@ -1068,9 +1497,10 @@ td {
         flex-wrap: wrap;
         align-items: center;
         justify-content: flex-start;
-        padding: 12px 14px;
+        padding: 14px 16px;
         border: none;
         background: transparent;
+        gap: 8px;
     }
     .date-header-row td:first-child {
         background: transparent;
@@ -1080,22 +1510,27 @@ td {
         width: 100%;
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: 10px;
+    }
+    .date-header-row .date-badge {
+        font-size: 1rem;
+        padding: 6px 18px;
     }
     .date-header-row .add-col-btn-header {
         margin-left: 0;
         width: 100%;
         justify-content: center;
-        font-size: 0.6rem;
-        padding: 3px 10px;
-        min-height: 26px;
+        font-size: 0.8rem;
+        padding: 8px 14px;
+        min-height: 40px;
     }
     .date-total-row td {
         display: flex;
         flex-wrap: wrap;
-        padding: 10px 14px;
+        padding: 12px 14px;
         background: rgba(79, 182, 168, 0.06);
         border-radius: 0 0 12px 12px;
+        gap: 8px;
     }
     .date-total-row td:before {
         content: "";
@@ -1107,31 +1542,40 @@ td {
     .date-total-row .date-total-content {
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
+        gap: 10px;
     }
     .date-total-row .date-total-actions {
         justify-content: center;
         width: 100%;
-        gap: 4px;
+        gap: 8px;
     }
     .date-total-row .date-total-actions .action-btn {
-        font-size: 0.6rem;
-        padding: 3px 10px;
+        font-size: 0.8rem;
+        padding: 8px 16px;
+        min-height: 40px;
     }
     .date-total-row .date-total-right {
         margin-left: 0;
         justify-content: center;
         width: 100%;
+        gap: 8px;
+    }
+    .date-total-row .date-total-label {
+        font-size: 0.85rem;
+    }
+    .date-total-row .date-total-amount {
+        font-size: 1.1rem;
     }
     .date-total-row .date-total-add-row .add-row-inline-btn {
         width: 100%;
         justify-content: center;
-        font-size: 0.65rem;
-        padding: 4px 12px;
+        font-size: 0.85rem;
+        padding: 10px 16px;
+        min-height: 44px;
     }
     tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
         display: block;
-        margin: 12px 8px;
+        margin: 12px 6px;
         border: 1px solid var(--border-color);
         border-radius: 12px;
         background: var(--bg-card);
@@ -1144,9 +1588,9 @@ td {
         align-items: center;
         border: none;
         border-bottom: 1px solid var(--border-color);
-        padding: 8px 10px;
+        padding: 10px 8px;
         background: transparent;
-        gap: 6px;
+        gap: 8px;
     }
     td:last-child {
         border-bottom: none;
@@ -1154,15 +1598,15 @@ td {
     td:before {
         content: attr(data-label);
         font-weight: 700;
-        font-size: 0.6rem;
+        font-size: 0.7rem;
         color: var(--accent-brass);
         text-transform: uppercase;
         letter-spacing: 0.8px;
         width: 100%;
         flex-shrink: 0;
-        padding-bottom: 3px;
+        padding-bottom: 4px;
         border-bottom: 1px solid var(--border-color);
-        margin-bottom: 3px;
+        margin-bottom: 4px;
     }
     td:first-child:before {
         content: "";
@@ -1173,58 +1617,79 @@ td {
     }
     td:first-child {
         background: var(--bg-card);
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         color: var(--text-dim);
         justify-content: center;
-        padding: 6px;
+        padding: 8px;
     }
     .column-group {
         flex: 1;
         min-width: 0;
         padding: 4px 2px;
         background: transparent;
-        gap: 4px;
+        gap: 6px;
     }
     .column-group .field-header {
-        font-size: 0.5rem;
+        font-size: 0.6rem;
         letter-spacing: 0.8px;
         padding: 3px 0;
         color: var(--accent-teal);
     }
+    .column-group .col-name-input {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+        min-height: 40px;
+    }
     .column-group input,
     .column-group textarea {
-        font-size: 0.8rem;
-        padding: 8px 10px;
+        font-size: 0.9rem;
+        padding: 10px 12px;
         border-radius: 8px;
         border: 1px solid var(--border-color);
         background: var(--bg-input);
+        min-height: 44px;
     }
     .column-group .desc-input {
-        font-size: 0.85rem;
+        font-size: 0.95rem;
+        padding: 12px 14px;
+        min-height: 50px;
+    }
+    .column-group .trans-ref-input {
+        font-size: 0.9rem;
         padding: 10px 12px;
         min-height: 44px;
-        background: var(--bg-input);
-        border-color: var(--border-color);
+    }
+    .column-group .amount-input {
+        font-size: 0.9rem;
+        padding: 10px 12px;
+        min-height: 44px;
     }
     .desc-display {
-        font-size: 0.8rem;
-        padding: 4px 6px;
+        font-size: 0.9rem;
+        padding: 8px 10px;
         background: var(--desc-bg);
         border: 1px solid var(--desc-border);
         border-radius: 8px;
         width: 100%;
         color: var(--text-secondary);
-        min-height: 60px;
-        max-height: 60px;
+        min-height: 50px;
+        max-height: 50px;
     }
     .row-total-col {
-        font-size: 0.9rem;
-        padding: 8px 10px;
+        font-size: 0.95rem;
+        padding: 10px 12px;
         background: linear-gradient(135deg, rgba(79, 182, 168, 0.12) 0%, rgba(79, 182, 168, 0.05) 100%);
         border-radius: 8px;
         text-align: center;
         font-weight: 700;
         color: var(--accent-teal);
+        min-height: 44px;
+    }
+    .delete-row-btn {
+        font-size: 0.8rem;
+        padding: 10px 14px;
+        min-height: 44px;
+        width: 100%;
     }
     .transaction-separator {
         display: none;
@@ -1232,14 +1697,16 @@ td {
     .col-total-row td {
         display: flex;
         justify-content: space-between;
-        padding: 8px 12px;
+        padding: 12px 14px;
         border-bottom: 1px solid var(--border-color);
         background: transparent;
+        font-size: 0.8rem;
+        min-height: 44px;
     }
     .col-total-row td:before {
         content: attr(data-label);
         font-weight: 600;
-        font-size: 0.6rem;
+        font-size: 0.7rem;
         color: var(--accent-brass);
         text-transform: uppercase;
         width: auto;
@@ -1257,9 +1724,74 @@ td {
         width: 100%;
         min-width: unset;
         justify-content: center;
+        padding: 12px;
     }
     .col-total-row td:last-child {
         border-bottom: none;
+    }
+    .user-item {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 14px;
+    }
+    .user-item .user-actions {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+    .user-item .user-actions button {
+        font-size: 0.8rem;
+        padding: 8px 14px;
+        min-height: 40px;
+    }
+    .user-item .user-info .username {
+        font-size: 0.95rem;
+    }
+    .modal-content {
+        max-width: 100%;
+        margin: 8px;
+        border-radius: 16px;
+    }
+    .modal-header {
+        padding: 16px 18px;
+    }
+    .modal-header h3 {
+        font-size: 1rem;
+    }
+    .modal-body {
+        padding: 16px 18px;
+    }
+    .login-container {
+        margin: 10px;
+        padding: 24px 18px 18px;
+    }
+    .login-header {
+        padding: 20px 20px 16px;
+    }
+    .login-header h1 {
+        font-size: 1.8rem;
+    }
+    .login-body {
+        padding: 20px;
+    }
+    .login-input {
+        font-size: 1rem;
+        padding: 14px 16px;
+        min-height: 48px;
+    }
+    .login-btn {
+        font-size: 1rem;
+        padding: 16px;
+        min-height: 50px;
+    }
+    .login-input-group label {
+        font-size: 0.85rem;
+    }
+    .btn-add,
+    .btn-add-secondary {
+        font-size: 0.9rem;
+        padding: 14px 20px;
+        min-height: 50px;
     }
 }
 
@@ -1268,64 +1800,184 @@ td {
         padding: 8px;
     }
     .header-left h1 {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
     }
-    td {
-        padding: 6px 8px;
+    .header-left {
+        gap: 6px;
     }
-    td:before {
-        font-size: 0.5rem;
-    }
-    .column-group input,
-    .column-group textarea {
-        font-size: 0.7rem;
-        padding: 6px 8px;
-    }
-    .column-group .desc-input {
-        font-size: 0.75rem;
-        padding: 8px 10px;
-        min-height: 36px;
-    }
-    .column-group .field-header {
-        font-size: 0.45rem;
-    }
-    .date-header-row td {
-        padding: 8px 10px;
-    }
-    .desc-display {
-        font-size: 0.75rem;
-        padding: 4px 6px;
-        min-height: 56px;
-        max-height: 56px;
-    }
-    .row-total-col {
-        font-size: 0.8rem;
-        padding: 6px 8px;
-    }
-    tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
-        padding: 4px 2px;
-        margin: 6px 2px;
-    }
-    .date-total-row td {
-        padding: 8px 10px;
-    }
-    .date-total-row .date-total-actions .action-btn {
-        font-size: 0.5rem;
-        padding: 2px 8px;
-    }
-    .date-total-row .date-total-label {
-        font-size: 0.7rem;
-    }
-    .date-total-row .date-total-amount {
-        font-size: 0.85rem;
-    }
-    .date-total-row .date-total-add-row .add-row-inline-btn {
+    .subtitle {
         font-size: 0.55rem;
         padding: 3px 10px;
     }
-    .date-header-row .add-col-btn-header {
+    .user-badge {
+        font-size: 0.65rem;
+        padding: 3px 10px;
+    }
+    .btn {
+        font-size: 0.75rem;
+        padding: 8px 14px;
+        min-height: 38px;
+    }
+    .btn-theme,
+    .btn-admin,
+    .btn-password,
+    .btn-logout {
+        font-size: 0.7rem;
+        padding: 6px 12px;
+        min-height: 34px;
+    }
+    .filter-panel {
+        padding: 10px 12px;
+        gap: 6px;
+    }
+    .filter-panel label {
+        font-size: 0.7rem;
+    }
+    .date-input {
+        font-size: 0.8rem;
+        padding: 8px 10px;
+        min-height: 38px;
+    }
+    .btn-filter,
+    .btn-filter-outline,
+    .btn-pdf {
+        font-size: 0.7rem;
+        padding: 8px 10px;
+        min-height: 38px;
+    }
+    .btn-add,
+    .btn-add-secondary {
+        font-size: 0.8rem;
+        padding: 12px 16px;
+        min-height: 44px;
+    }
+    .total-label {
+        font-size: 0.8rem;
+    }
+    .total-value {
+        font-size: 1.2rem;
+    }
+    td {
+        padding: 8px 6px;
+    }
+    td:before {
+        font-size: 0.6rem;
+    }
+    .column-group input,
+    .column-group textarea {
+        font-size: 0.8rem;
+        padding: 8px 10px;
+        min-height: 38px;
+    }
+    .column-group .desc-input {
+        font-size: 0.85rem;
+        padding: 10px 12px;
+        min-height: 44px;
+    }
+    .column-group .field-header {
         font-size: 0.5rem;
-        padding: 2px 8px;
-        min-height: 22px;
+    }
+    .date-header-row td {
+        padding: 10px 12px;
+    }
+    .date-header-row .date-badge {
+        font-size: 0.85rem;
+        padding: 4px 14px;
+    }
+    .desc-display {
+        font-size: 0.8rem;
+        padding: 6px 8px;
+        min-height: 44px;
+        max-height: 44px;
+    }
+    .row-total-col {
+        font-size: 0.85rem;
+        padding: 8px 10px;
+        min-height: 38px;
+    }
+    .date-total-row td {
+        padding: 10px 12px;
+    }
+    .date-total-row .date-total-actions .action-btn {
+        font-size: 0.7rem;
+        padding: 6px 12px;
+        min-height: 34px;
+    }
+    .date-total-row .date-total-label {
+        font-size: 0.75rem;
+    }
+    .date-total-row .date-total-amount {
+        font-size: 0.95rem;
+    }
+    .date-total-row .date-total-add-row .add-row-inline-btn {
+        font-size: 0.75rem;
+        padding: 8px 14px;
+        min-height: 38px;
+    }
+    .delete-row-btn {
+        font-size: 0.7rem;
+        padding: 8px 12px;
+        min-height: 38px;
+    }
+    .date-header-row .add-col-btn-header {
+        font-size: 0.7rem;
+        padding: 6px 12px;
+        min-height: 34px;
+    }
+    tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
+        padding: 6px 4px;
+        margin: 8px 4px;
+    }
+    .col-total-row td {
+        padding: 10px 12px;
+        font-size: 0.7rem;
+        min-height: 38px;
+    }
+    .user-item {
+        padding: 10px 12px;
+    }
+    .user-item .user-actions button {
+        font-size: 0.7rem;
+        padding: 6px 10px;
+        min-height: 34px;
+    }
+    .user-item .user-info .username {
+        font-size: 0.85rem;
+    }
+    .login-container {
+        padding: 20px 14px 14px;
+        margin: 8px;
+    }
+    .login-header {
+        padding: 16px 16px 12px;
+    }
+    .login-header h1 {
+        font-size: 1.5rem;
+    }
+    .login-body {
+        padding: 16px;
+    }
+    .login-input {
+        font-size: 0.9rem;
+        padding: 12px 14px;
+        min-height: 44px;
+    }
+    .login-btn {
+        font-size: 0.9rem;
+        padding: 14px;
+        min-height: 46px;
+    }
+    .modal-content {
+        margin: 4px;
+        border-radius: 12px;
+    }
+    .modal-header {
+        padding: 12px 14px;
+    }
+    .modal-header h3 {
+        font-size: 0.9rem;
+    }
+    .modal-body {
+        padding: 12px 14px;
     }
 }
