@@ -1,53 +1,53 @@
-// script.js – With Supabase Cloud Sync, auto-save, latest date on top, password change
+// script.js – With Login System, Auto-calculating Totals, and Supabase Cloud Sync
 
 (function() {
-        "use strict";
+    "use strict";
 
-        // ========================================
-        // 🔥 SUPABASE CONFIG
-        // ========================================
-        const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
+    // ========================================
+    // 🔥 SUPABASE CONFIG
+    // ========================================
+    const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
 
-        let supabaseClient = null;
-        const SYNC_ENABLED = true;
+    let supabaseClient = null;
+    const SYNC_ENABLED = true;
 
-        // ========================================
-        // INITIALIZE SUPABASE
-        // ========================================
-        function initSupabase() {
-            try {
-                if (typeof supabase !== 'undefined') {
-                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    console.log('✅ Supabase initialized');
-                    return true;
-                } else {
-                    console.log('⏳ Loading Supabase library...');
-                    setTimeout(() => {
-                        if (typeof supabase !== 'undefined') {
-                            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                            console.log('✅ Supabase initialized');
-                        }
-                    }, 1000);
-                    return false;
-                }
-            } catch (e) {
-                console.error('❌ Supabase error:', e);
+    // ========================================
+    // INITIALIZE SUPABASE
+    // ========================================
+    function initSupabase() {
+        try {
+            if (typeof supabase !== 'undefined') {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('✅ Supabase initialized');
+                return true;
+            } else {
+                console.log('⏳ Loading Supabase library...');
+                setTimeout(() => {
+                    if (typeof supabase !== 'undefined') {
+                        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                        console.log('✅ Supabase initialized');
+                    }
+                }, 1000);
                 return false;
             }
+        } catch (e) {
+            console.error('❌ Supabase error:', e);
+            return false;
         }
+    }
 
-        // ========================================
-        // TOAST NOTIFICATIONS
-        // ========================================
-        function showToast(message, type = 'info') {
-            const existing = document.querySelector('.toast-message');
-            if (existing) existing.remove();
+    // ========================================
+    // TOAST NOTIFICATIONS
+    // ========================================
+    function showToast(message, type = 'info') {
+        const existing = document.querySelector('.toast-message');
+        if (existing) existing.remove();
 
-            const toast = document.createElement('div');
-            toast.className = 'toast-message';
-            toast.textContent = message;
-            toast.style.cssText = `
+        const toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.textContent = message;
+        toast.style.cssText = `
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -65,420 +65,444 @@
             max-width: 90%;
             text-align: center;
         `;
-            document.body.appendChild(toast);
+        document.body.appendChild(toast);
 
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // ========================================
+    // SUPABASE SYNC FUNCTIONS
+    // ========================================
+    async function syncToCloud(showToastMsg = true) {
+        if (!SYNC_ENABLED || !supabaseClient) {
+            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
+            return;
         }
 
-        // ========================================
-        // SUPABASE SYNC FUNCTIONS
-        // ========================================
-        async function syncToCloud(showToastMsg = true) {
-            if (!SYNC_ENABLED || !supabaseClient) {
-                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
-                return;
+        try {
+            const store = {
+                data: data,
+                nextDateId: nextDateId,
+                nextRowId: nextRowId,
+                nextColId: nextColId,
+                customColumns: customColumns,
+                savedCustomColumns: savedCustomColumns,
+                savedDates: savedDates,
+                editModes: editModes,
+                lastUpdated: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from('expenditure_data')
+                .upsert({
+                    id: 1,
+                    data: store,
+                    updated_by: currentUser ? currentUser.username : 'anonymous',
+                    last_updated: new Date().toISOString()
+                }, { onConflict: 'id' });
+
+            if (error) {
+                console.error('❌ Sync error:', error);
+                if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
+            } else {
+                console.log('✅ Synced to cloud');
+                if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
             }
+        } catch (e) {
+            console.error('❌ Sync error:', e);
+            if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
+        }
+    }
 
-            try {
-                const sortedData = sortDataByDate(data);
+    async function syncFromCloud(showToastMsg = true) {
+        if (!SYNC_ENABLED || !supabaseClient) {
+            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
+            return false;
+        }
 
-                const store = {
-                    data: sortedData,
-                    nextDateId: nextDateId,
-                    nextRowId: nextRowId,
-                    nextColId: nextColId,
-                    customColumns: customColumns,
-                    savedCustomColumns: savedCustomColumns,
-                    savedDates: savedDates,
-                    editModes: editModes,
-                    lastUpdated: new Date().toISOString()
-                };
+        try {
+            console.log('📥 Pulling from cloud...');
 
-                const { error } = await supabaseClient
-                    .from('expenditure_data')
-                    .upsert({
-                        id: 1,
-                        data: store,
-                        updated_by: currentUser ? currentUser.username : 'anonymous',
-                        last_updated: new Date().toISOString()
-                    }, { onConflict: 'id' });
+            const { data: result, error } = await supabaseClient
+                .from('expenditure_data')
+                .select('data, updated_by, last_updated')
+                .eq('id', 1)
+                .single();
 
-                if (error) {
-                    console.error('❌ Sync error:', error);
-                    if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
                 } else {
-                    console.log('✅ Synced to cloud');
-                    if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
+                    if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
                 }
-            } catch (e) {
-                console.error('❌ Sync error:', e);
-                if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
-            }
-        }
-
-        async function syncFromCloud(showToastMsg = true) {
-            if (!SYNC_ENABLED || !supabaseClient) {
-                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
                 return false;
             }
 
+            if (result && result.data) {
+                const cloudData = result.data;
+
+                data = cloudData.data || data;
+                nextDateId = cloudData.nextDateId || nextDateId;
+                nextRowId = cloudData.nextRowId || nextRowId;
+                nextColId = cloudData.nextColId || nextColId;
+                customColumns = cloudData.customColumns || customColumns;
+                savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
+                savedDates = cloudData.savedDates || savedDates;
+                editModes = cloudData.editModes || editModes;
+
+                saveToStorage();
+
+                console.log('✅ Pulled from cloud');
+
+                render();
+                setTimeout(() => {
+                    updateTotalsOnly();
+                    console.log('✅ Totals updated after cloud sync');
+                }, 100);
+
+                if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
+                return true;
+            }
+        } catch (e) {
+            console.error('❌ Pull error:', e);
+            if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
+        }
+        return false;
+    }
+
+    // ========================================
+    // USER MANAGEMENT
+    // ========================================
+    const USERS_KEY = 'starlink_users';
+
+    const DEFAULT_USERS = [
+        { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
+        { id: 2, username: 'grace', password: 'grace123', role: 'user' }
+    ];
+
+    function getUsers() {
+        const stored = localStorage.getItem(USERS_KEY);
+        if (stored) {
             try {
-                console.log('📥 Pulling from cloud...');
+                const users = JSON.parse(stored);
+                if (users && users.length > 0) return users;
+            } catch (e) {}
+        }
+        localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+        return DEFAULT_USERS;
+    }
 
-                const { data: result, error } = await supabaseClient
-                    .from('expenditure_data')
-                    .select('data, updated_by, last_updated')
-                    .eq('id', 1)
-                    .single();
+    function saveUsers(users) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
 
-                if (error) {
-                    if (error.code === 'PGRST116') {
-                        if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
-                    } else {
-                        if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
-                    }
-                    return false;
-                }
+    function findUser(username) {
+        const users = getUsers();
+        return users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    }
 
-                if (result && result.data) {
-                    const cloudData = result.data;
+    function authenticateUser(username, password) {
+        const user = findUser(username);
+        if (user && user.password === password) return user;
+        return null;
+    }
 
-                    data = cloudData.data || data;
-                    nextDateId = cloudData.nextDateId || nextDateId;
-                    nextRowId = cloudData.nextRowId || nextRowId;
-                    nextColId = cloudData.nextColId || nextColId;
-                    customColumns = cloudData.customColumns || customColumns;
-                    savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
-                    savedDates = cloudData.savedDates || savedDates;
-                    editModes = cloudData.editModes || editModes;
+    function updateUserPassword(userId, newPassword) {
+        const users = getUsers();
+        const index = users.findIndex(u => u.id === userId);
+        if (index === -1) return false;
+        users[index].password = newPassword;
+        saveUsers(users);
+        return true;
+    }
 
-                    data = sortDataByDate(data);
+    function addUser(username, password, role = 'user') {
+        const users = getUsers();
+        if (findUser(username)) return false;
+        const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
+        users.push({ id: maxId + 1, username, password, role });
+        saveUsers(users);
+        return true;
+    }
 
-                    saveToStorage();
+    function updateUser(id, username, password, role) {
+        const users = getUsers();
+        const index = users.findIndex(u => u.id === id);
+        if (index === -1) return false;
+        const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
+        if (existing) return false;
+        users[index] = {...users[index], username, password, role };
+        saveUsers(users);
+        return true;
+    }
 
-                    console.log('✅ Pulled from cloud');
-                    if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
+    function deleteUser(id) {
+        const users = getUsers();
+        const filtered = users.filter(u => u.id !== id);
+        if (filtered.length === users.length) return false;
+        saveUsers(filtered);
+        return true;
+    }
 
-                    render();
+    // ========================================
+    // DOM REFS - LOGIN
+    // ========================================
+    const loginScreen = document.getElementById('loginScreen');
+    const forgotScreen = document.getElementById('forgotScreen');
+    const changePasswordScreen = document.getElementById('changePasswordScreen');
+    const mainApp = document.getElementById('mainApp');
+    const usernameInput = document.getElementById('usernameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const loginSuccess = document.getElementById('loginSuccess');
+    const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+    const backToLoginBtn = document.getElementById('backToLoginBtn');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
+    const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
+    const changePasswordOld = document.getElementById('changePasswordOld');
+    const changePasswordNew = document.getElementById('changePasswordNew');
+    const changePasswordConfirm = document.getElementById('changePasswordConfirm');
+    const changePasswordError = document.getElementById('changePasswordError');
+    const changePasswordSuccess = document.getElementById('changePasswordSuccess');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userDisplay = document.getElementById('userDisplay');
+
+    const adminPanelBtn = document.getElementById('adminPanelBtn');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminPanelClose = document.getElementById('adminPanelClose');
+    const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
+    const userList = document.getElementById('userList');
+    const addUserBtn = document.getElementById('addUserBtn');
+
+    const userModal = document.getElementById('userModal');
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userModalUsername = document.getElementById('userModalUsername');
+    const userModalPassword = document.getElementById('userModalPassword');
+    const userModalRole = document.getElementById('userModalRole');
+    const userModalError = document.getElementById('userModalError');
+    const userModalSave = document.getElementById('userModalSave');
+    const userModalCancel = document.getElementById('userModalCancel');
+    const userModalClose = document.getElementById('userModalClose');
+
+    const syncNowBtn = document.getElementById('syncNowBtn');
+
+    let editingUserId = null;
+    let currentUser = null;
+
+    // ========================================
+    // LOGIN FUNCTIONS
+    // ========================================
+    function checkLogin() {
+        const savedUser = sessionStorage.getItem('starlink_user');
+        if (savedUser) {
+            try {
+                currentUser = JSON.parse(savedUser);
+                const users = getUsers();
+                const exists = users.find(u => u.id === currentUser.id);
+                if (exists) {
+                    showMainApp();
                     return true;
                 }
-            } catch (e) {
-                console.error('❌ Pull error:', e);
-                if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
-            }
-            return false;
+            } catch (e) {}
         }
+        return false;
+    }
 
-        // ========================================
-        // SORT DATA BY DATE (LATEST FIRST)
-        // ========================================
-        function sortDataByDate(dataArray) {
-            if (!dataArray || dataArray.length === 0) return dataArray;
-            return [...dataArray].sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return dateB - dateA;
-            });
-        }
+    function attemptLogin() {
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
 
-        // ========================================
-        // USER MANAGEMENT
-        // ========================================
-        const USERS_KEY = 'starlink_users';
-
-        const DEFAULT_USERS = [
-            { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
-            { id: 2, username: 'grace', password: 'grace123', role: 'user' }
-        ];
-
-        function getUsers() {
-            const stored = localStorage.getItem(USERS_KEY);
-            if (stored) {
-                try {
-                    const users = JSON.parse(stored);
-                    if (users && users.length > 0) return users;
-                } catch (e) {}
-            }
-            localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
-            return DEFAULT_USERS;
-        }
-
-        function saveUsers(users) {
-            localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        }
-
-        function findUser(username) {
-            const users = getUsers();
-            return users.find(u => u.username.toLowerCase() === username.toLowerCase());
-        }
-
-        function authenticateUser(username, password) {
-            const user = findUser(username);
-            if (user && user.password === password) return user;
-            return null;
-        }
-
-        function updateUserPassword(userId, newPassword) {
-            const users = getUsers();
-            const index = users.findIndex(u => u.id === userId);
-            if (index === -1) return false;
-            users[index].password = newPassword;
-            saveUsers(users);
-            return true;
-        }
-
-        function addUser(username, password, role = 'user') {
-            const users = getUsers();
-            if (findUser(username)) return false;
-            const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
-            users.push({ id: maxId + 1, username, password, role });
-            saveUsers(users);
-            return true;
-        }
-
-        function updateUser(id, username, password, role) {
-            const users = getUsers();
-            const index = users.findIndex(u => u.id === id);
-            if (index === -1) return false;
-            const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
-            if (existing) return false;
-            users[index] = {...users[index], username, password, role };
-            saveUsers(users);
-            return true;
-        }
-
-        function deleteUser(id) {
-            const users = getUsers();
-            const filtered = users.filter(u => u.id !== id);
-            if (filtered.length === users.length) return false;
-            saveUsers(filtered);
-            return true;
-        }
-
-        // ========================================
-        // DOM REFS
-        // ========================================
-        const loginScreen = document.getElementById('loginScreen');
-        const forgotScreen = document.getElementById('forgotScreen');
-        const changePasswordScreen = document.getElementById('changePasswordScreen');
-        const mainApp = document.getElementById('mainApp');
-        const usernameInput = document.getElementById('usernameInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const loginBtn = document.getElementById('loginBtn');
-        const loginError = document.getElementById('loginError');
-        const loginSuccess = document.getElementById('loginSuccess');
-        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-        const backToLoginBtn = document.getElementById('backToLoginBtn');
-        const changePasswordBtn = document.getElementById('changePasswordBtn');
-        const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
-        const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
-        const changePasswordOld = document.getElementById('changePasswordOld');
-        const changePasswordNew = document.getElementById('changePasswordNew');
-        const changePasswordConfirm = document.getElementById('changePasswordConfirm');
-        const changePasswordError = document.getElementById('changePasswordError');
-        const changePasswordSuccess = document.getElementById('changePasswordSuccess');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const userDisplay = document.getElementById('userDisplay');
-
-        const adminPanelBtn = document.getElementById('adminPanelBtn');
-        const adminPanel = document.getElementById('adminPanel');
-        const adminPanelClose = document.getElementById('adminPanelClose');
-        const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
-        const userList = document.getElementById('userList');
-        const addUserBtn = document.getElementById('addUserBtn');
-
-        const userModal = document.getElementById('userModal');
-        const userModalTitle = document.getElementById('userModalTitle');
-        const userModalUsername = document.getElementById('userModalUsername');
-        const userModalPassword = document.getElementById('userModalPassword');
-        const userModalRole = document.getElementById('userModalRole');
-        const userModalError = document.getElementById('userModalError');
-        const userModalSave = document.getElementById('userModalSave');
-        const userModalCancel = document.getElementById('userModalCancel');
-        const userModalClose = document.getElementById('userModalClose');
-
-        const syncNowBtn = document.getElementById('syncNowBtn');
-
-        let editingUserId = null;
-        let currentUser = null;
-
-        // ========================================
-        // LOGIN FUNCTIONS
-        // ========================================
-        function checkLogin() {
-            const savedUser = sessionStorage.getItem('starlink_user');
-            if (savedUser) {
-                try {
-                    currentUser = JSON.parse(savedUser);
-                    const users = getUsers();
-                    const exists = users.find(u => u.id === currentUser.id);
-                    if (exists) {
-                        showMainApp();
-                        return true;
-                    }
-                } catch (e) {}
-            }
-            return false;
-        }
-
-        function attemptLogin() {
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
-
-            if (!username || !password) {
-                loginError.textContent = '❌ Please enter both username and password.';
-                loginError.style.display = 'block';
-                loginSuccess.style.display = 'none';
-                return;
-            }
-
-            const user = authenticateUser(username, password);
-            if (user) {
-                loginError.style.display = 'none';
-                loginSuccess.textContent = '✅ Login successful! Redirecting...';
-                loginSuccess.style.display = 'block';
-                currentUser = user;
-                sessionStorage.setItem('starlink_user', JSON.stringify(user));
-                setTimeout(() => {
-                    showMainApp();
-                }, 600);
-            } else {
-                loginSuccess.style.display = 'none';
-                loginError.textContent = '❌ Invalid username or password.';
-                loginError.style.display = 'block';
-                passwordInput.value = '';
-                passwordInput.focus();
-                setTimeout(() => {
-                    loginError.style.display = 'none';
-                }, 3000);
-            }
-        }
-
-        function showMainApp() {
-            loginScreen.style.display = 'none';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            mainApp.style.display = 'block';
-            if (userDisplay) {
-                userDisplay.textContent = '👤 ' + currentUser.username;
-            }
-            if (adminPanelBtn) {
-                adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
-            }
-            if (typeof initMainApp === 'function') {
-                initMainApp();
-            }
-        }
-
-        function logout() {
-            sessionStorage.removeItem('starlink_user');
-            currentUser = null;
-            mainApp.style.display = 'none';
-            loginScreen.style.display = 'flex';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            usernameInput.value = '';
-            passwordInput.value = '';
-            loginError.style.display = 'none';
+        if (!username || !password) {
+            loginError.textContent = '❌ Please enter both username and password.';
+            loginError.style.display = 'block';
             loginSuccess.style.display = 'none';
-            // Don't reload, just reset the login form
-            usernameInput.focus();
+            return;
         }
 
-        function showForgotScreen() {
-            loginScreen.style.display = 'none';
-            forgotScreen.style.display = 'flex';
-            changePasswordScreen.style.display = 'none';
-            // Focus on username input in forgot screen
-            const forgotUsername = document.getElementById('forgotUsername');
-            if (forgotUsername) forgotUsername.focus();
+        const user = authenticateUser(username, password);
+        if (user) {
+            loginError.style.display = 'none';
+            loginSuccess.textContent = '✅ Login successful! Redirecting...';
+            loginSuccess.style.display = 'block';
+            currentUser = user;
+            sessionStorage.setItem('starlink_user', JSON.stringify(user));
+            setTimeout(() => {
+                showMainApp();
+            }, 600);
+        } else {
+            loginSuccess.style.display = 'none';
+            loginError.textContent = '❌ Invalid username or password.';
+            loginError.style.display = 'block';
+            passwordInput.value = '';
+            passwordInput.focus();
+            setTimeout(() => {
+                loginError.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    function showMainApp() {
+        loginScreen.style.display = 'none';
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        if (userDisplay) {
+            userDisplay.textContent = '👤 ' + currentUser.username;
+        }
+        if (adminPanelBtn) {
+            adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+        }
+        if (typeof initMainApp === 'function') {
+            initMainApp();
+        }
+    }
+
+    function logout() {
+        sessionStorage.removeItem('starlink_user');
+        currentUser = null;
+        mainApp.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'none';
+        usernameInput.value = '';
+        passwordInput.value = '';
+        loginError.style.display = 'none';
+        loginSuccess.style.display = 'none';
+        usernameInput.focus();
+    }
+
+    function showForgotScreen() {
+        loginScreen.style.display = 'none';
+        forgotScreen.style.display = 'flex';
+        changePasswordScreen.style.display = 'none';
+        const forgotUsername = document.getElementById('forgotUsername');
+        if (forgotUsername) forgotUsername.focus();
+    }
+
+    function showChangePasswordScreen() {
+        loginScreen.style.display = 'none';
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'flex';
+        changePasswordOld.value = '';
+        changePasswordNew.value = '';
+        changePasswordConfirm.value = '';
+        changePasswordError.style.display = 'none';
+        changePasswordSuccess.style.display = 'none';
+        changePasswordOld.focus();
+    }
+
+    function showLoginScreen() {
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        usernameInput.focus();
+    }
+
+    function handleChangePassword() {
+        const oldPassword = changePasswordOld.value.trim();
+        const newPassword = changePasswordNew.value.trim();
+        const confirmPassword = changePasswordConfirm.value.trim();
+
+        changePasswordError.style.display = 'none';
+        changePasswordSuccess.style.display = 'none';
+
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            changePasswordError.textContent = '❌ Please fill in all fields.';
+            changePasswordError.style.display = 'block';
+            return;
         }
 
-        function showChangePasswordScreen() {
-            loginScreen.style.display = 'none';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'flex';
-            changePasswordOld.value = '';
-            changePasswordNew.value = '';
-            changePasswordConfirm.value = '';
-            changePasswordError.style.display = 'none';
-            changePasswordSuccess.style.display = 'none';
-            changePasswordOld.focus();
+        if (oldPassword !== currentUser.password) {
+            changePasswordError.textContent = '❌ Old password is incorrect.';
+            changePasswordError.style.display = 'block';
+            return;
         }
 
-        function showLoginScreen() {
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            loginScreen.style.display = 'flex';
-            usernameInput.focus();
+        if (newPassword !== confirmPassword) {
+            changePasswordError.textContent = '❌ New passwords do not match.';
+            changePasswordError.style.display = 'block';
+            return;
         }
 
-        function handleChangePassword() {
-            const oldPassword = changePasswordOld.value.trim();
-            const newPassword = changePasswordNew.value.trim();
-            const confirmPassword = changePasswordConfirm.value.trim();
+        if (newPassword.length < 4) {
+            changePasswordError.textContent = '❌ New password must be at least 4 characters.';
+            changePasswordError.style.display = 'block';
+            return;
+        }
 
-            changePasswordError.style.display = 'none';
-            changePasswordSuccess.style.display = 'none';
+        if (updateUserPassword(currentUser.id, newPassword)) {
+            currentUser.password = newPassword;
+            sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
+            changePasswordSuccess.textContent = '✅ Password changed successfully!';
+            changePasswordSuccess.style.display = 'block';
+            setTimeout(() => {
+                showLoginScreen();
+            }, 2000);
+        } else {
+            changePasswordError.textContent = '❌ Failed to update password.';
+            changePasswordError.style.display = 'block';
+        }
+    }
 
-            if (!oldPassword || !newPassword || !confirmPassword) {
-                changePasswordError.textContent = '❌ Please fill in all fields.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
-
-            if (oldPassword !== currentUser.password) {
-                changePasswordError.textContent = '❌ Old password is incorrect.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
-
-            if (newPassword !== confirmPassword) {
-                changePasswordError.textContent = '❌ New passwords do not match.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
-
-            if (newPassword.length < 4) {
-                changePasswordError.textContent = '❌ New password must be at least 4 characters.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
-
-            if (updateUserPassword(currentUser.id, newPassword)) {
-                currentUser.password = newPassword;
-                sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
-                changePasswordSuccess.textContent = '✅ Password changed successfully!';
-                changePasswordSuccess.style.display = 'block';
-                setTimeout(() => {
-                    showLoginScreen();
-                }, 2000);
+    function handleForgotPassword() {
+        const forgotUsername = document.getElementById('forgotUsername');
+        const forgotError = document.getElementById('forgotError');
+        const forgotSuccess = document.getElementById('forgotSuccess');
+        
+        if (!forgotUsername) return;
+        
+        const username = forgotUsername.value.trim();
+        forgotError.style.display = 'none';
+        forgotSuccess.style.display = 'none';
+        
+        if (!username) {
+            forgotError.textContent = '❌ Please enter your username.';
+            forgotError.style.display = 'block';
+            return;
+        }
+        
+        const user = findUser(username);
+        if (user) {
+            if (currentUser && currentUser.role === 'admin') {
+                forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
             } else {
-                changePasswordError.textContent = '❌ Failed to update password.';
-                changePasswordError.style.display = 'block';
+                forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
             }
+            forgotSuccess.style.display = 'block';
+            setTimeout(() => {
+                showLoginScreen();
+            }, 3000);
+        } else {
+            forgotError.textContent = '❌ Username not found.';
+            forgotError.style.display = 'block';
+            setTimeout(() => {
+                forgotError.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    // ========================================
+    // ADMIN PANEL
+    // ========================================
+    function renderUserList() {
+        const users = getUsers();
+        if (!userList) return;
+
+        if (users.length === 0) {
+            userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
+            return;
         }
 
-        // ========================================
-        // ADMIN PANEL
-        // ========================================
-        function renderUserList() {
-            const users = getUsers();
-            if (!userList) return;
-
-            if (users.length === 0) {
-                userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
-                return;
-            }
-
-            let html = '';
-            users.forEach(user => {
-                        const isCurrent = currentUser && currentUser.id === user.id;
-                        html += `
+        let html = '';
+        users.forEach(user => {
+            const isCurrent = currentUser && currentUser.id === user.id;
+            html += `
                 <div class="user-item ${isCurrent ? 'current-user' : ''}">
                     <div class="user-info">
                         <span class="user-icon">${user.role === 'admin' ? '👑' : '👤'}</span>
@@ -606,7 +630,7 @@
     // ========================================
     // MAIN APP
     // ========================================
-    const STORAGE_KEY = 'starlinkExpenditureData_v33';
+    const STORAGE_KEY = 'starlinkExpenditureData_v27';
 
     const DEFAULT_COLUMNS = [
         { key: 'starlinkGeneral', label: 'STARLINK GENERAL', isCustom: false },
@@ -617,7 +641,7 @@
         { key: 'routers', label: 'ROUTERS', isCustom: false }
     ];
 
-    const NUMERIC_KEYS = ['tokens', 'fuelBike', 'routers'];
+    const NUMERIC_KEYS = ['starlinkGeneral', 'commonInvestment', 'commonExpenditure', 'tokens', 'fuelBike', 'routers'];
 
     let customColumns = [];
     let data = [];
@@ -647,6 +671,9 @@
 
     const themeToggle = document.getElementById('themeToggle');
 
+    // ========================================
+    // THEME TOGGLE
+    // ========================================
     function getStoredTheme() {
         return localStorage.getItem('starlink_theme') || 'dark';
     }
@@ -672,12 +699,19 @@
         applyTheme(newTheme);
     }
 
-    function isNumericColumn(colKey) {
-        return NUMERIC_KEYS.includes(colKey) || customColumns.some(c => c.key === colKey) || savedCustomColumns.some(c => c.key === colKey);
-    }
-
+    // ========================================
+    // MAIN APP FUNCTIONS
+    // ========================================
+    
     function getAllColumns() {
         return [...DEFAULT_COLUMNS, ...customColumns, ...savedCustomColumns];
+    }
+
+    function isNumericColumn(colKey) {
+        if (NUMERIC_KEYS.includes(colKey)) return true;
+        if (customColumns.some(c => c.key === colKey)) return true;
+        if (savedCustomColumns.some(c => c.key === colKey)) return true;
+        return false;
     }
 
     function formatNumber(v) {
@@ -688,12 +722,15 @@
 
     function getColumnAmount(row, columnKey) {
         const amountKey = columnKey + '_amount';
-        return formatNumber(row[amountKey] || 0);
+        const value = row[amountKey];
+        if (value === undefined || value === null || value === '') return 0;
+        return formatNumber(value);
     }
 
     function getRowTotal(row) {
         let sum = 0;
-        getAllColumns().forEach(col => {
+        const allCols = getAllColumns();
+        allCols.forEach(col => {
             if (isNumericColumn(col.key)) {
                 sum += getColumnAmount(row, col.key);
             }
@@ -703,6 +740,7 @@
 
     function getDateGroupTotal(group) {
         let sum = 0;
+        if (!group.rows || group.rows.length === 0) return 0;
         group.rows.forEach(row => {
             sum += getRowTotal(row);
         });
@@ -727,19 +765,20 @@
                 return d.date <= dateTo;
             });
         }
-        return sortDataByDate(filtered);
+        return filtered;
     }
 
     function computeColumnTotals(filteredData) {
         const totals = {};
-        getAllColumns().forEach(col => {
+        const allCols = getAllColumns();
+        allCols.forEach(col => {
             if (isNumericColumn(col.key)) {
                 totals[col.key] = 0;
             }
         });
         filteredData.forEach(group => {
             group.rows.forEach(row => {
-                getAllColumns().forEach(col => {
+                allCols.forEach(col => {
                     if (isNumericColumn(col.key)) {
                         totals[col.key] += getColumnAmount(row, col.key);
                     }
@@ -771,14 +810,15 @@
         const row = { id: nextRowId++ };
         getAllColumns().forEach(col => {
             row[col.key + '_desc'] = '';
-            row[col.key + '_transRef'] = '';
+            row[col.key + '_transaction'] = '';
+            row[col.key + '_ref'] = '';
             row[col.key + '_amount'] = '';
         });
         return row;
     }
 
     function addCustomColumn() {
-        const colName = prompt('Enter the new column name:', 'New Expenditure');
+        const colName = prompt('Enter the name of the new expenditure column:', 'New Expenditure');
         if (!colName || colName.trim() === '') return;
 
         const key = 'temp_' + nextColId++ + '_' + colName.replace(/\s+/g, '_').toLowerCase();
@@ -794,7 +834,8 @@
         data.forEach(group => {
             group.rows.forEach(row => {
                 row[newCol.key + '_desc'] = '';
-                row[newCol.key + '_transRef'] = '';
+                row[newCol.key + '_transaction'] = '';
+                row[newCol.key + '_ref'] = '';
                 row[newCol.key + '_amount'] = '';
             });
         });
@@ -817,7 +858,8 @@
         data.forEach(group => {
             group.rows.forEach(row => {
                 row[savedCol.key + '_desc'] = row[colToSave.key + '_desc'] || '';
-                row[savedCol.key + '_transRef'] = row[colToSave.key + '_transRef'] || '';
+                row[savedCol.key + '_transaction'] = row[colToSave.key + '_transaction'] || '';
+                row[savedCol.key + '_ref'] = row[colToSave.key + '_ref'] || '';
                 row[savedCol.key + '_amount'] = row[colToSave.key + '_amount'] || '';
             });
         });
@@ -828,7 +870,8 @@
         data.forEach(group => {
             group.rows.forEach(row => {
                 delete row[colToSave.key + '_desc'];
-                delete row[colToSave.key + '_transRef'];
+                delete row[colToSave.key + '_transaction'];
+                delete row[colToSave.key + '_ref'];
                 delete row[colToSave.key + '_amount'];
             });
         });
@@ -839,12 +882,13 @@
     function removeCustomColumn(colKey) {
         const savedIndex = savedCustomColumns.findIndex(c => c.key === colKey);
         if (savedIndex !== -1) {
-            if (!confirm('Delete this saved column?')) return;
+            if (!confirm('Delete this saved column? All data in this column will be lost.')) return;
             savedCustomColumns.splice(savedIndex, 1);
             data.forEach(group => {
                 group.rows.forEach(row => {
                     delete row[colKey + '_desc'];
-                    delete row[colKey + '_transRef'];
+                    delete row[colKey + '_transaction'];
+                    delete row[colKey + '_ref'];
                     delete row[colKey + '_amount'];
                 });
             });
@@ -854,17 +898,52 @@
 
         const tempIndex = customColumns.findIndex(c => c.key === colKey);
         if (tempIndex !== -1) {
-            if (!confirm('Delete this temporary column?')) return;
+            if (!confirm('Delete this temporary column? Data will be lost if not saved.')) return;
             customColumns.splice(tempIndex, 1);
             data.forEach(group => {
                 group.rows.forEach(row => {
                     delete row[colKey + '_desc'];
-                    delete row[colKey + '_transRef'];
+                    delete row[colKey + '_transaction'];
+                    delete row[colKey + '_ref'];
                     delete row[colKey + '_amount'];
                 });
             });
             render();
         }
+    }
+
+    function saveDateEntry(dateId) {
+        const group = data.find(d => d.id === dateId);
+        if (!group) return;
+
+        savedDates[dateId] = true;
+        editModes[dateId] = false;
+        render();
+
+        const saveBtn = document.querySelector(`.save-btn[data-date-id="${dateId}"]`);
+        if (saveBtn) {
+            saveBtn.textContent = '✓ Saved';
+            saveBtn.classList.add('saved');
+            setTimeout(() => {
+                saveBtn.textContent = '💾 Save';
+                saveBtn.classList.remove('saved');
+            }, 2000);
+        }
+    }
+
+    function resetDateEntry(dateId) {
+        if (!confirm('Reset all transactions for this date? This will clear all data.')) return;
+
+        const group = data.find(d => d.id === dateId);
+        if (!group) return;
+
+        group.rows = [];
+        const newRow = createEmptyRow();
+        group.rows.push(newRow);
+
+        savedDates[dateId] = false;
+        editModes[dateId] = false;
+        render();
     }
 
     function editDateEntry(dateId) {
@@ -898,52 +977,18 @@
         const newRow = createEmptyRow();
         group.rows.push(newRow);
         render();
-        autoSyncToCloud();
     }
 
     // ========================================
-    // AUTO-SYNC TO CLOUD
+    // DEBOUNCED SAVE
     // ========================================
-    function autoSyncToCloud() {
-        if (!SYNC_ENABLED || !supabaseClient) return;
-        data = sortDataByDate(data);
-        syncToCloud(false);
-    }
+    let saveTimeout = null;
 
-    // ========================================
-    // LOCAL STORAGE - SAVE ONLY (NO RENDER)
-    // ========================================
-    function saveLocalOnly() {
-        try {
-            data = sortDataByDate(data);
-            const store = {
-                data,
-                nextDateId,
-                nextRowId,
-                nextColId,
-                customColumns,
-                savedCustomColumns,
-                savedDates,
-                editModes,
-                dateFrom,
-                dateTo
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-        } catch (e) {}
-    }
-
-    // ========================================
-    // CLOUD SYNC DEBOUNCER
-    // ========================================
-    let cloudSyncTimer = null;
-
-    function scheduleCloudSync() {
-        if (!SYNC_ENABLED || !supabaseClient) return;
-        clearTimeout(cloudSyncTimer);
-        cloudSyncTimer = setTimeout(() => {
-            data = sortDataByDate(data);
-            syncToCloud(false);
-        }, 1200);
+    function debouncedSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveToStorage();
+        }, 500);
     }
 
     // ========================================
@@ -962,13 +1007,75 @@
         if (!row) return;
 
         row[key] = value;
+        updateTotalsOnly();
+        debouncedSave();
+        scheduleCloudSync();
+    }
 
-        if (key.includes('_amount')) {
-            updateTotalsOnly();
+    // ========================================
+    // UPDATE TOTALS ONLY
+    // ========================================
+    function updateTotalsOnly() {
+        const filtered = getFilteredData();
+        const allColumns = getAllColumns();
+        
+        const grandTotal = computeGrandTotal(filtered);
+        if (grandTotalEl) {
+            grandTotalEl.textContent = grandTotal.toFixed(2);
         }
 
-        saveLocalOnly();
-        scheduleCloudSync();
+        const rowTotalCells = document.querySelectorAll('.row-total-col');
+        let rowIndex = 0;
+        filtered.forEach(group => {
+            group.rows.forEach(row => {
+                if (rowTotalCells[rowIndex]) {
+                    rowTotalCells[rowIndex].textContent = getRowTotal(row).toFixed(2);
+                }
+                rowIndex++;
+            });
+        });
+
+        const dateTotalCells = document.querySelectorAll('.date-total-amount');
+        filtered.forEach((group, idx) => {
+            if (dateTotalCells[idx]) {
+                dateTotalCells[idx].textContent = getDateGroupTotal(group).toFixed(2);
+            }
+        });
+
+        const colTotals = computeColumnTotals(filtered);
+        const colTotalCells = document.querySelectorAll('.col-total-row td[data-label]');
+        
+        if (colTotalCells.length > 0) {
+            let colIndex = 0;
+            allColumns.forEach(col => {
+                if (isNumericColumn(col.key)) {
+                    const cellIndex = colIndex + 1;
+                    if (colTotalCells[cellIndex]) {
+                        colTotalCells[cellIndex].textContent = (colTotals[col.key] || 0).toFixed(2);
+                    }
+                    colIndex++;
+                }
+            });
+            
+            const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
+            const lastCell = colTotalCells[colTotalCells.length - 1];
+            if (lastCell) {
+                lastCell.textContent = totalColSum.toFixed(2);
+            }
+        }
+    }
+
+    // ========================================
+    // CLOUD SYNC DEBOUNCER
+    // ========================================
+    let cloudSyncTimer = null;
+
+    function scheduleCloudSync() {
+        if (!SYNC_ENABLED || !supabaseClient) return;
+        clearTimeout(cloudSyncTimer);
+        cloudSyncTimer = setTimeout(() => {
+            syncToCloud(false);
+        }, 1200);
     }
 
     // ========================================
@@ -1004,12 +1111,16 @@
             </td></tr>`;
         } else {
             filtered.forEach((group) => {
+                const isSaved = savedDates[group.id] || false;
+                const isEditing = editModes[group.id] || false;
+                const showEditMode = isEditing || !isSaved;
+
                 html += `<tr class="date-header-row">`;
                 html += `<td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
                 html += `<div class="date-label">
                     <span class="date-badge">📅 ${group.date || 'No date'}</span>
                     <button class="add-col-btn-header" title="Add a new custom expenditure column">
-                        ➕ Add Column
+                        ➕ Add Expenditure
                     </button>
                 </div>`;
                 html += `</td>`;
@@ -1032,21 +1143,54 @@
                             const isCustom = col.isCustom || false;
                             const isSavedCol = col.isSaved || false;
                             const descKey = col.key + '_desc';
-                            const transRefKey = col.key + '_transRef';
+                            const transKey = col.key + '_transaction';
+                            const refKey = col.key + '_ref';
                             const amountKey = col.key + '_amount';
 
                             const descVal = row[descKey] || '';
-                            const transRefVal = row[transRefKey] || '';
+                            const transVal = row[transKey] || '';
+                            const refVal = row[refKey] || '';
                             const amountVal = row[amountKey] || '';
+
+                            let descDisplay = '';
+                            if (showEditMode) {
+                                descDisplay = `
+                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${descVal}</textarea>
+                                `;
+                            } else {
+                                const truncated = truncateText(descVal, 3);
+                                if (truncated.needsReadMore) {
+                                    descDisplay = `
+                                        <div class="desc-display" data-full-text="${descVal.replace(/"/g, '&quot;')}">
+                                            <span class="short-text">${truncated.short}</span>
+                                            <button class="read-more-btn" data-full-text="${descVal.replace(/"/g, '&quot;')}">readmore</button>
+                                        </div>
+                                    `;
+                                } else {
+                                    descDisplay = `
+                                        <div class="desc-display" data-full-text="${descVal.replace(/"/g, '&quot;')}">
+                                            ${descVal || '-'}
+                                        </div>
+                                    `;
+                                }
+                            }
 
                             html += `<td style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${col.label}">
                                 <div class="column-group ${isCustom ? 'custom-column' : ''}">
                                     <span class="field-header">Description</span>
-                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${descVal}</textarea>
-                                    <span class="field-header">Transaction / Reference</span>
-                                    <textarea class="trans-ref-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transRefKey}" placeholder="Transaction / Reference" rows="1">${transRefVal}</textarea>
+                                    ${descDisplay}
+                                    <span class="field-header">Transaction</span>
+                                    ${showEditMode ? 
+                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction" rows="1">${transVal}</textarea>` : 
+                                        `<div class="desc-display">${transVal || '-'}</div>`}
+                                    <span class="field-header">Reference</span>
+                                    ${showEditMode ? 
+                                        `<textarea class="ref-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${refKey}" placeholder="Reference" rows="1">${refVal}</textarea>` : 
+                                        `<div class="desc-display">${refVal || '-'}</div>`}
                                     <span class="field-header">Amount</span>
-                                    <input type="number" step="0.01" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0.00">
+                                    ${showEditMode ? 
+                                        `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
+                                        `<div class="desc-display" style="font-weight:700; text-align:right; color:var(--accent-teal);">${formatNumber(amountVal).toFixed(2)}</div>`}
                                     ${isCustom ? 
                                         `<div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
                                             ${!isSavedCol ? `<button class="save-col-btn" data-col-key="${col.key}" title="Save this column permanently">💾 Save</button>` : ''}
@@ -1067,7 +1211,9 @@
                 html += `<td colspan="${allColumns.length + 2}" style="padding:8px 16px;" data-label="">`;
                 html += `<div class="date-total-content">
                     <div class="date-total-actions">
+                        <button class="action-btn save-btn ${isSaved ? 'saved' : ''}" data-date-id="${group.id}">💾 Save</button>
                         <button class="action-btn edit-btn" data-date-id="${group.id}">✏️ Edit</button>
+                        <button class="action-btn reset-btn" data-date-id="${group.id}">🔄 Reset</button>
                         <button class="action-btn delete-date-btn" data-date-id="${group.id}">🗑️ Delete</button>
                     </div>
                     <div class="date-total-right">
@@ -1109,11 +1255,11 @@
         const grandTotal = computeGrandTotal(filtered);
         grandTotalEl.textContent = grandTotal.toFixed(2);
 
-        document.querySelectorAll('.desc-input, .trans-ref-input, .amount-input').forEach(input => {
+        document.querySelectorAll('.desc-input, .trans-input, .ref-input, .amount-input').forEach(input => {
             input.addEventListener('input', handleInputChange);
         });
 
-        document.querySelectorAll('.desc-input, .trans-ref-input').forEach(textarea => {
+        document.querySelectorAll('.desc-input, .trans-input, .ref-input').forEach(textarea => {
             textarea.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
@@ -1124,22 +1270,55 @@
             }, 10);
         });
 
+        document.querySelectorAll('.read-more-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const fullText = this.dataset.fullText || '';
+                if (fullText) {
+                    openReadMoreModal(fullText);
+                }
+            });
+        });
+
+        document.querySelectorAll('.desc-display').forEach(el => {
+            el.addEventListener('click', function() {
+                const fullText = this.dataset.fullText || '';
+                if (fullText && fullText !== '-') {
+                    openReadMoreModal(fullText);
+                }
+            });
+        });
+
         document.querySelectorAll('.delete-row-btn').forEach(btn => {
             btn.addEventListener('click', handleDeleteRow);
         });
 
-        document.querySelectorAll('.edit-btn').forEach(btn => {
+        document.querySelectorAll('.date-total-row .save-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const dateId = parseInt(e.target.dataset.dateId);
+                saveDateEntry(dateId);
+            });
+        });
+
+        document.querySelectorAll('.date-total-row .edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const dateId = parseInt(e.target.dataset.dateId);
                 editDateEntry(dateId);
             });
         });
 
-        document.querySelectorAll('.delete-date-btn').forEach(btn => {
+        document.querySelectorAll('.date-total-row .reset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const dateId = parseInt(e.target.dataset.dateId);
+                resetDateEntry(dateId);
+            });
+        });
+
+        document.querySelectorAll('.date-total-row .delete-date-btn').forEach(btn => {
             btn.addEventListener('click', handleDeleteDate);
         });
 
-        document.querySelectorAll('.add-row-inline-btn').forEach(btn => {
+        document.querySelectorAll('.date-total-row .add-row-inline-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const dateId = parseInt(e.target.dataset.dateId);
                 addTransactionRow(dateId);
@@ -1165,33 +1344,10 @@
         });
 
         saveToStorage();
-    }
-
-    function updateTotalsOnly() {
-        const filtered = getFilteredData();
-
-        const grandTotal = computeGrandTotal(filtered);
-        grandTotalEl.textContent = grandTotal.toFixed(2);
-
-        const filteredGroups = getFilteredData();
-        const rowTotalCells = document.querySelectorAll('.row-total-col');
-        const dateTotalCells = document.querySelectorAll('.date-total-amount');
-
-        let rowIndex = 0;
-        filteredGroups.forEach(group => {
-            group.rows.forEach(row => {
-                if (rowTotalCells[rowIndex]) {
-                    rowTotalCells[rowIndex].textContent = getRowTotal(row).toFixed(2);
-                }
-                rowIndex++;
-            });
-        });
-
-        filteredGroups.forEach((group, idx) => {
-            if (dateTotalCells[idx]) {
-                dateTotalCells[idx].textContent = getDateGroupTotal(group).toFixed(2);
-            }
-        });
+        
+        setTimeout(() => {
+            updateTotalsOnly();
+        }, 50);
     }
 
     function handleDeleteRow(e) {
@@ -1202,19 +1358,19 @@
             if (group) {
                 group.rows = group.rows.filter(r => r.id !== rowId);
                 render();
-                autoSyncToCloud();
+                scheduleCloudSync();
             }
         }
     }
 
     function handleDeleteDate(e) {
         const dateId = parseInt(e.target.dataset.dateId);
-        if (confirm('Delete this entire date entry?')) {
+        if (confirm('Delete this entire date entry and all its transactions?')) {
             data = data.filter(d => d.id !== dateId);
             delete savedDates[dateId];
             delete editModes[dateId];
             render();
-            autoSyncToCloud();
+            scheduleCloudSync();
         }
     }
 
@@ -1237,9 +1393,8 @@
         newGroup.rows.push(newRow);
 
         data.push(newGroup);
-        data = sortDataByDate(data);
         render();
-        autoSyncToCloud();
+        scheduleCloudSync();
     }
 
     function applyDateFilter() {
@@ -1289,6 +1444,9 @@
             .trans-row td { background: #f5f3ec; }
             .trans-row td:first-child { background: #f5f3ec; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .trans-row .trans-text { font-size: 0.85rem; color: #1a1a1d; text-align: left; }
+            .ref-row td { background: #f2f0e8; }
+            .ref-row td:first-child { background: #f2f0e8; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
+            .ref-row .ref-text { font-size: 0.85rem; color: #1a1a1d; text-align: left; }
             .amount-row td { background: #efece4; }
             .amount-row td:first-child { background: #efece4; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .amount-row .amount-text { font-weight: 700; color: #0a2a44; font-size: 0.9rem; text-align: right; }
@@ -1310,7 +1468,6 @@
             printHtml += `<div style="text-align:center; padding:40px; color:#6b6860; font-size:16px;">📭 No expenditure records found for the selected date range.</div>`;
         } else {
             printHtml += `<table>`;
-
             printHtml += `<tr><th>DATE</th>`;
             allColumns.forEach(col => {
                 printHtml += `<th>${col.label}</th>`;
@@ -1338,10 +1495,19 @@
                         printHtml += `</tr>`;
 
                         printHtml += `<tr class="trans-row">`;
-                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">TRANSACTION / REFERENCE</td>`;
+                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">TRANSACTION</td>`;
                         allColumns.forEach(col => {
-                            const transRefVal = row[col.key + '_transRef'] || '';
-                            printHtml += `<td class="trans-text" style="text-align:left; font-size:0.85rem;">${transRefVal || '-'}</td>`;
+                            const transVal = row[col.key + '_transaction'] || '';
+                            printHtml += `<td class="trans-text" style="text-align:left; font-size:0.85rem;">${transVal || '-'}</td>`;
+                        });
+                        printHtml += `<td></td>`;
+                        printHtml += `</tr>`;
+
+                        printHtml += `<tr class="ref-row">`;
+                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">REFERENCE</td>`;
+                        allColumns.forEach(col => {
+                            const refVal = row[col.key + '_ref'] || '';
+                            printHtml += `<td class="ref-text" style="text-align:left; font-size:0.85rem;">${refVal || '-'}</td>`;
                         });
                         printHtml += `<td></td>`;
                         printHtml += `</tr>`;
@@ -1383,7 +1549,6 @@
             printHtml += `<td colspan="${allColumns.length + 1}" style="text-align:right; padding-right:20px;">GRAND TOTAL</td>`;
             printHtml += `<td>${grandTotal.toFixed(2)}</td>`;
             printHtml += `</tr>`;
-
             printHtml += `</table>`;
         }
 
@@ -1406,7 +1571,6 @@
     // ========================================
     function saveToStorage() {
         try {
-            data = sortDataByDate(data);
             const store = {
                 data,
                 nextDateId,
@@ -1432,7 +1596,7 @@
             if (!raw) return false;
             const store = JSON.parse(raw);
             if (store.data && Array.isArray(store.data)) {
-                data = sortDataByDate(store.data);
+                data = store.data;
                 nextDateId = store.nextDateId || 1;
                 nextRowId = store.nextRowId || 1;
                 nextColId = store.nextColId || 1;
@@ -1448,50 +1612,6 @@
             }
         } catch (e) {}
         return false;
-    }
-
-    // ========================================
-    // FORGOT PASSWORD HANDLER
-    // ========================================
-    function handleForgotPassword() {
-        const forgotUsername = document.getElementById('forgotUsername');
-        const forgotError = document.getElementById('forgotError');
-        const forgotSuccess = document.getElementById('forgotSuccess');
-        
-        if (!forgotUsername) return;
-        
-        const username = forgotUsername.value.trim();
-        forgotError.style.display = 'none';
-        forgotSuccess.style.display = 'none';
-        
-        if (!username) {
-            forgotError.textContent = '❌ Please enter your username.';
-            forgotError.style.display = 'block';
-            return;
-        }
-        
-        const user = findUser(username);
-        if (user) {
-            // Admin can reset password - for security, just show a message
-            forgotSuccess.innerHTML = `✅ Password reset link sent to admin. Please contact your administrator.`;
-            forgotSuccess.style.display = 'block';
-            
-            // If current user is admin, they can change password directly
-            if (currentUser && currentUser.role === 'admin') {
-                forgotSuccess.innerHTML = `✅ As admin, you can change passwords in the Admin Panel.`;
-                forgotSuccess.style.display = 'block';
-            }
-            
-            setTimeout(() => {
-                showLoginScreen();
-            }, 3000);
-        } else {
-            forgotError.textContent = '❌ Username not found.';
-            forgotError.style.display = 'block';
-            setTimeout(() => {
-                forgotError.style.display = 'none';
-            }, 3000);
-        }
     }
 
     // ========================================
@@ -1521,12 +1641,16 @@
             data = [sampleGroup];
         }
 
-        data = sortDataByDate(data);
         render();
 
         if (SYNC_ENABLED) {
             setTimeout(() => {
-                syncFromCloud(true);
+                syncFromCloud(true).then(() => {
+                    setTimeout(() => {
+                        updateTotalsOnly();
+                        console.log('✅ Totals refreshed after cloud sync');
+                    }, 200);
+                });
             }, 1000);
         }
 
@@ -1553,14 +1677,13 @@
 
         if (syncNowBtn) {
             syncNowBtn.addEventListener('click', function() {
-                data = sortDataByDate(data);
                 syncToCloud(true);
             });
         }
 
         addRowBtn.addEventListener('click', () => {
             if (data.length === 0) {
-                alert('Please add a date entry first');
+                alert('Please add a date entry first (click "Add New Date Entry")');
                 return;
             }
             const lastGroup = data[data.length - 1];
@@ -1569,254 +1692,292 @@
     }
 
     // ========================================
-    // INIT - COMPLETE
+    // INIT
     // ========================================
     function init() {
-        // Check if already logged in
-        const loggedIn = checkLogin();
-
-        if (!loggedIn) {
-            loginScreen.style.display = 'flex';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            mainApp.style.display = 'none';
-        }
-
-        // ========================================
-        // LOGIN BUTTON
-        // ========================================
-        if (loginBtn) {
-            loginBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                attemptLogin();
+        console.log('🚀 Initializing app...');
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('📄 DOM loaded, initializing...');
+                initializeApp();
             });
+        } else {
+            console.log('📄 DOM already loaded, initializing...');
+            initializeApp();
         }
-
-        // ========================================
-        // ENTER KEY ON LOGIN
-        // ========================================
-        if (usernameInput) {
-            usernameInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (passwordInput) passwordInput.focus();
-                }
-            });
-        }
-
-        if (passwordInput) {
-            passwordInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    attemptLogin();
-                }
-            });
-        }
-
-        // ========================================
-        // FORGOT PASSWORD BUTTON - SHOW FORGOT SCREEN
-        // ========================================
-        if (forgotPasswordBtn) {
-            forgotPasswordBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                showForgotScreen();
-            });
-        }
-
-        // ========================================
-        // BACK TO LOGIN FROM FORGOT SCREEN
-        // ========================================
-        if (backToLoginBtn) {
-            backToLoginBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                showLoginScreen();
-            });
-        }
-
-        // ========================================
-        // FORGOT PASSWORD SUBMIT
-        // ========================================
-        const forgotSubmitBtn = document.getElementById('forgotSubmitBtn');
-        if (forgotSubmitBtn) {
-            forgotSubmitBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                handleForgotPassword();
-            });
-        }
-
-        // Enter key on forgot username field
-        const forgotUsername = document.getElementById('forgotUsername');
-        if (forgotUsername) {
-            forgotUsername.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleForgotPassword();
-                }
-            });
-        }
-
-        // ========================================
-        // CHANGE PASSWORD BUTTONS
-        // ========================================
-        if (changePasswordBtn) {
-            changePasswordBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                showChangePasswordScreen();
-            });
-        }
-
-        if (changePasswordBackBtn) {
-            changePasswordBackBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                showLoginScreen();
-            });
-        }
-
-        if (changePasswordSaveBtn) {
-            changePasswordSaveBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                handleChangePassword();
-            });
-        }
-
-        // Enter key on change password fields
-        if (changePasswordOld) {
-            changePasswordOld.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (changePasswordNew) changePasswordNew.focus();
-                }
-            });
-        }
-
-        if (changePasswordNew) {
-            changePasswordNew.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (changePasswordConfirm) changePasswordConfirm.focus();
-                }
-            });
-        }
-
-        if (changePasswordConfirm) {
-            changePasswordConfirm.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleChangePassword();
-                }
-            });
-        }
-
-        // ========================================
-        // LOGOUT
-        // ========================================
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                logout();
-            });
-        }
-
-        // ========================================
-        // ADMIN PANEL
-        // ========================================
-        if (adminPanelBtn) {
-            adminPanelBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                openAdminPanel();
-            });
-        }
-
-        if (adminPanelClose) {
-            adminPanelClose.addEventListener('click', function(e) {
-                e.preventDefault();
-                closeAdminPanel();
-            });
-        }
-
-        if (adminPanelCloseBtn) {
-            adminPanelCloseBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                closeAdminPanel();
-            });
-        }
-
-        if (addUserBtn) {
-            addUserBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                openUserModal(null);
-            });
-        }
-
-        // ========================================
-        // USER MODAL
-        // ========================================
-        if (userModalSave) {
-            userModalSave.addEventListener('click', function(e) {
-                e.preventDefault();
-                saveUser();
-            });
-        }
-
-        if (userModalCancel) {
-            userModalCancel.addEventListener('click', function(e) {
-                e.preventDefault();
-                closeUserModal();
-            });
-        }
-
-        if (userModalClose) {
-            userModalClose.addEventListener('click', function(e) {
-                e.preventDefault();
-                closeUserModal();
-            });
-        }
-
-        // Enter key on user modal fields
-        if (userModalUsername) {
-            userModalUsername.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (userModalPassword) userModalPassword.focus();
-                }
-            });
-        }
-
-        if (userModalPassword) {
-            userModalPassword.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveUser();
-                }
-            });
-        }
-
-        // ========================================
-        // CLOSE MODALS ON BACKGROUND CLICK
-        // ========================================
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    if (this.id === 'userModal') {
-                        closeUserModal();
-                    } else if (this.id === 'adminPanel') {
-                        closeAdminPanel();
-                    }
-                }
-            });
-        });
-
-        console.log('✅ App initialized successfully');
     }
 
-    // ========================================
-    // START APP
-    // ========================================
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+    function initializeApp() {
+        try {
+            const requiredElements = [
+                'loginScreen', 'forgotScreen', 'changePasswordScreen', 'mainApp',
+                'usernameInput', 'passwordInput', 'loginBtn', 'forgotPasswordBtn',
+                'backToLoginBtn', 'changePasswordBtn', 'changePasswordBackBtn',
+                'changePasswordSaveBtn', 'logoutBtn', 'adminPanelBtn'
+            ];
+            
+            let allElementsExist = true;
+            requiredElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) {
+                    console.warn(`⚠️ Element #${id} not found`);
+                    allElementsExist = false;
+                }
+            });
+            
+            if (!allElementsExist) {
+                console.error('❌ Required elements missing! Check your HTML IDs.');
+                return;
+            }
+            
+            const savedUser = sessionStorage.getItem('starlink_user');
+            let loggedIn = false;
+            
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    const users = getUsers();
+                    const exists = users.find(u => u.id === currentUser.id);
+                    if (exists) {
+                        console.log('✅ User logged in:', currentUser.username);
+                        showMainApp();
+                        loggedIn = true;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Invalid session data:', e);
+                    sessionStorage.removeItem('starlink_user');
+                }
+            }
+            
+            if (!loggedIn) {
+                console.log('🔐 No user logged in, showing login screen');
+                const loginScreenEl = document.getElementById('loginScreen');
+                const mainAppEl = document.getElementById('mainApp');
+                const forgotScreenEl = document.getElementById('forgotScreen');
+                const changePasswordScreenEl = document.getElementById('changePasswordScreen');
+                
+                if (loginScreenEl) loginScreenEl.style.display = 'flex';
+                if (mainAppEl) mainAppEl.style.display = 'none';
+                if (forgotScreenEl) forgotScreenEl.style.display = 'none';
+                if (changePasswordScreenEl) changePasswordScreenEl.style.display = 'none';
+                
+                if (usernameInput) usernameInput.focus();
+            }
+            
+            // ========================================
+            // EVENT LISTENERS
+            // ========================================
+            
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    attemptLogin();
+                });
+            }
+            
+            if (usernameInput) {
+                usernameInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (passwordInput) passwordInput.focus();
+                    }
+                });
+            }
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        attemptLogin();
+                    }
+                });
+            }
+            
+            if (forgotPasswordBtn) {
+                forgotPasswordBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showForgotScreen();
+                });
+            }
+            
+            if (backToLoginBtn) {
+                backToLoginBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showLoginScreen();
+                });
+            }
+            
+            const forgotSubmitBtn = document.getElementById('forgotSubmitBtn');
+            if (forgotSubmitBtn) {
+                forgotSubmitBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    handleForgotPassword();
+                });
+            }
+            
+            const forgotUsername = document.getElementById('forgotUsername');
+            if (forgotUsername) {
+                forgotUsername.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleForgotPassword();
+                    }
+                });
+            }
+            
+            if (changePasswordBtn) {
+                changePasswordBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showChangePasswordScreen();
+                });
+            }
+            
+            if (changePasswordBackBtn) {
+                changePasswordBackBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showLoginScreen();
+                });
+            }
+            
+            if (changePasswordSaveBtn) {
+                changePasswordSaveBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    handleChangePassword();
+                });
+            }
+            
+            if (changePasswordOld) {
+                changePasswordOld.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (changePasswordNew) changePasswordNew.focus();
+                    }
+                });
+            }
+            
+            if (changePasswordNew) {
+                changePasswordNew.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (changePasswordConfirm) changePasswordConfirm.focus();
+                    }
+                });
+            }
+            
+            if (changePasswordConfirm) {
+                changePasswordConfirm.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleChangePassword();
+                    }
+                });
+            }
+            
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+            
+            if (adminPanelBtn) {
+                adminPanelBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openAdminPanel();
+                });
+            }
+            
+            if (adminPanelClose) {
+                adminPanelClose.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeAdminPanel();
+                });
+            }
+            
+            if (adminPanelCloseBtn) {
+                adminPanelCloseBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeAdminPanel();
+                });
+            }
+            
+            if (addUserBtn) {
+                addUserBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openUserModal(null);
+                });
+            }
+            
+            if (userModalSave) {
+                userModalSave.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    saveUser();
+                });
+            }
+            
+            if (userModalCancel) {
+                userModalCancel.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeUserModal();
+                });
+            }
+            
+            if (userModalClose) {
+                userModalClose.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeUserModal();
+                });
+            }
+            
+            if (userModalUsername) {
+                userModalUsername.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (userModalPassword) userModalPassword.focus();
+                    }
+                });
+            }
+            
+            if (userModalPassword) {
+                userModalPassword.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveUser();
+                    }
+                });
+            }
+            
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        if (this.id === 'userModal') {
+                            closeUserModal();
+                        } else if (this.id === 'adminPanel') {
+                            closeAdminPanel();
+                        }
+                    }
+                });
+            });
+            
+            console.log('✅ App initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Error initializing app:', error);
+            const loginErrorEl = document.getElementById('loginError');
+            if (loginErrorEl) {
+                loginErrorEl.textContent = '⚠️ App initialization error. Please refresh.';
+                loginErrorEl.style.display = 'block';
+            }
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(init, 100);
     } else {
-        init();
+        window.addEventListener('load', function() {
+            setTimeout(init, 100);
+        });
     }
 
 })();
