@@ -6,31 +6,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>Starlink · General Connection Expenditure</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Load Supabase library from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
     <!-- ======================================== -->
-    <!-- LOGIN SCREEN -->
+    <!-- LOGIN SCREEN - RESTORED ORIGINAL DESIGN -->
     <!-- ======================================== -->
     <div id="loginScreen" class="login-screen">
         <div class="login-container">
             <div class="login-header">
-                <h1>📡 STARLINK</h1>
+                <div class="login-icon">📡</div>
+                <h1>STARLINK</h1>
                 <p>General Connection Expenditure</p>
             </div>
-            <div class="login-box">
-                <h2>Login</h2>
+            <div class="login-body">
                 <div id="loginError" class="login-error" style="display:none;"></div>
                 <div id="loginSuccess" class="login-success" style="display:none;">✅ Login successful!</div>
-                <input type="text" id="usernameInput" placeholder="Username" autocomplete="username">
-                <input type="password" id="passwordInput" placeholder="Password" autocomplete="current-password">
-                <button id="loginBtn" class="btn-login">Login</button>
-                <div class="login-links">
-                    <button id="forgotPasswordBtn" class="link-btn">Forgot Password?</button>
-                    <button id="changePasswordBtn" class="link-btn">Change Password</button>
+
+                <div class="login-input-group">
+                    <label>Username</label>
+                    <input type="text" id="usernameInput" class="login-input" placeholder="Enter your username" autocomplete="username">
                 </div>
+
+                <div class="login-input-group">
+                    <label>Password</label>
+                    <input type="password" id="passwordInput" class="login-input" placeholder="Enter your password" autocomplete="current-password">
+                </div>
+
+                <button id="loginBtn" class="login-btn">Login</button>
+
+                <div class="login-links">
+                    <button id="forgotPasswordBtn" class="forgot-link">Forgot Password?</button>
+                    <span>|</span>
+                    <button id="changePasswordBtn" class="forgot-link">Change Password</button>
+                </div>
+            </div>
+            <div class="login-footer">
+                <span>© 2026 Starlink Expenditure System</span>
             </div>
         </div>
     </div>
@@ -41,16 +54,27 @@
     <div id="forgotScreen" class="login-screen" style="display:none;">
         <div class="login-container">
             <div class="login-header">
-                <h1>📡 STARLINK</h1>
+                <div class="login-icon">🔐</div>
+                <h1>STARLINK</h1>
                 <p>Reset Password</p>
             </div>
-            <div class="login-box">
-                <h2>Forgot Password</h2>
+            <div class="login-body">
                 <div id="forgotError" class="login-error" style="display:none;"></div>
                 <div id="forgotSuccess" class="login-success" style="display:none;"></div>
-                <input type="text" id="forgotUsername" placeholder="Enter your username">
-                <button id="forgotSubmitBtn" class="btn-login">Reset Password</button>
-                <button id="backToLoginBtn" class="link-btn">← Back to Login</button>
+
+                <div class="login-input-group">
+                    <label>Username</label>
+                    <input type="text" id="forgotUsername" class="login-input" placeholder="Enter your username">
+                </div>
+
+                <button id="forgotSubmitBtn" class="login-btn">Reset Password</button>
+
+                <div class="login-links">
+                    <button id="backToLoginBtn" class="forgot-link">← Back to Login</button>
+                </div>
+            </div>
+            <div class="login-footer">
+                <span>© 2026 Starlink Expenditure System</span>
             </div>
         </div>
     </div>
@@ -61,18 +85,37 @@
     <div id="changePasswordScreen" class="login-screen" style="display:none;">
         <div class="login-container">
             <div class="login-header">
-                <h1>📡 STARLINK</h1>
+                <div class="login-icon">🔑</div>
+                <h1>STARLINK</h1>
                 <p>Change Password</p>
             </div>
-            <div class="login-box">
-                <h2>Change Password</h2>
+            <div class="login-body">
                 <div id="changePasswordError" class="login-error" style="display:none;"></div>
                 <div id="changePasswordSuccess" class="login-success" style="display:none;"></div>
-                <input type="password" id="changePasswordOld" placeholder="Current Password">
-                <input type="password" id="changePasswordNew" placeholder="New Password">
-                <input type="password" id="changePasswordConfirm" placeholder="Confirm New Password">
-                <button id="changePasswordSaveBtn" class="btn-login">Update Password</button>
-                <button id="changePasswordBackBtn" class="link-btn">← Back to Login</button>
+
+                <div class="login-input-group">
+                    <label>Current Password</label>
+                    <input type="password" id="changePasswordOld" class="login-input" placeholder="Enter current password">
+                </div>
+
+                <div class="login-input-group">
+                    <label>New Password</label>
+                    <input type="password" id="changePasswordNew" class="login-input" placeholder="Enter new password">
+                </div>
+
+                <div class="login-input-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="changePasswordConfirm" class="login-input" placeholder="Confirm new password">
+                </div>
+
+                <button id="changePasswordSaveBtn" class="login-btn">Update Password</button>
+
+                <div class="login-links">
+                    <button id="changePasswordBackBtn" class="forgot-link">← Back to Login</button>
+                </div>
+            </div>
+            <div class="login-footer">
+                <span>© 2026 Starlink Expenditure System</span>
             </div>
         </div>
     </div>
@@ -112,7 +155,6 @@
                 <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
             </div>
 
-            <!-- Summary Cards -->
             <div class="totals-grid">
                 <div class="total-card" id="grandTotalCard">
                     <span class="total-label">💰 GRAND TOTAL</span>
@@ -167,9 +209,9 @@
             </div>
             <div class="modal-body">
                 <div id="userModalError" class="login-error" style="display:none;"></div>
-                <input type="text" id="userModalUsername" placeholder="Username">
-                <input type="text" id="userModalPassword" placeholder="Password">
-                <select id="userModalRole">
+                <input type="text" id="userModalUsername" placeholder="Username" class="login-input">
+                <input type="text" id="userModalPassword" placeholder="Password" class="login-input">
+                <select id="userModalRole" class="login-input">
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                 </select>
@@ -182,8 +224,7 @@
     </div>
 
     <script src="script.js"></script>
-    
-    <!-- Emergency fix for Netlify - ensure login screen shows -->
+
     <script>
         (function() {
             setTimeout(function() {
@@ -192,7 +233,7 @@
                 const mainApp = document.getElementById('mainApp');
                 const forgotScreen = document.getElementById('forgotScreen');
                 const changePasswordScreen = document.getElementById('changePasswordScreen');
-                
+
                 if (!savedUser && loginScreen) {
                     console.log('🔐 Force showing login screen');
                     loginScreen.style.display = 'flex';
