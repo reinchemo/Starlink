@@ -1,53 +1,53 @@
-// script.js – With Login System, Auto-calculating Totals, and Supabase Cloud Sync
+// script.js – With Login System, Auto-calculating Totals, Save Button, and Supabase Cloud Sync
 
 (function() {
-    "use strict";
+        "use strict";
 
-    // ========================================
-    // 🔥 SUPABASE CONFIG
-    // ========================================
-    const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
+        // ========================================
+        // 🔥 SUPABASE CONFIG
+        // ========================================
+        const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
 
-    let supabaseClient = null;
-    const SYNC_ENABLED = true;
+        let supabaseClient = null;
+        const SYNC_ENABLED = true;
 
-    // ========================================
-    // INITIALIZE SUPABASE
-    // ========================================
-    function initSupabase() {
-        try {
-            if (typeof supabase !== 'undefined') {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                console.log('✅ Supabase initialized');
-                return true;
-            } else {
-                console.log('⏳ Loading Supabase library...');
-                setTimeout(() => {
-                    if (typeof supabase !== 'undefined') {
-                        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                        console.log('✅ Supabase initialized');
-                    }
-                }, 1000);
+        // ========================================
+        // INITIALIZE SUPABASE
+        // ========================================
+        function initSupabase() {
+            try {
+                if (typeof supabase !== 'undefined') {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    console.log('✅ Supabase initialized');
+                    return true;
+                } else {
+                    console.log('⏳ Loading Supabase library...');
+                    setTimeout(() => {
+                        if (typeof supabase !== 'undefined') {
+                            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                            console.log('✅ Supabase initialized');
+                        }
+                    }, 1000);
+                    return false;
+                }
+            } catch (e) {
+                console.error('❌ Supabase error:', e);
                 return false;
             }
-        } catch (e) {
-            console.error('❌ Supabase error:', e);
-            return false;
         }
-    }
 
-    // ========================================
-    // TOAST NOTIFICATIONS
-    // ========================================
-    function showToast(message, type = 'info') {
-        const existing = document.querySelector('.toast-message');
-        if (existing) existing.remove();
+        // ========================================
+        // TOAST NOTIFICATIONS
+        // ========================================
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast-message');
+            if (existing) existing.remove();
 
-        const toast = document.createElement('div');
-        toast.className = 'toast-message';
-        toast.textContent = message;
-        toast.style.cssText = `
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            toast.style.cssText = `
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -65,444 +65,444 @@
             max-width: 90%;
             text-align: center;
         `;
-        document.body.appendChild(toast);
+            document.body.appendChild(toast);
 
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    // ========================================
-    // SUPABASE SYNC FUNCTIONS
-    // ========================================
-    async function syncToCloud(showToastMsg = true) {
-        if (!SYNC_ENABLED || !supabaseClient) {
-            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
-            return;
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        try {
-            const store = {
-                data: data,
-                nextDateId: nextDateId,
-                nextRowId: nextRowId,
-                nextColId: nextColId,
-                customColumns: customColumns,
-                savedCustomColumns: savedCustomColumns,
-                savedDates: savedDates,
-                editModes: editModes,
-                lastUpdated: new Date().toISOString()
-            };
-
-            const { error } = await supabaseClient
-                .from('expenditure_data')
-                .upsert({
-                    id: 1,
-                    data: store,
-                    updated_by: currentUser ? currentUser.username : 'anonymous',
-                    last_updated: new Date().toISOString()
-                }, { onConflict: 'id' });
-
-            if (error) {
-                console.error('❌ Sync error:', error);
-                if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
-            } else {
-                console.log('✅ Synced to cloud');
-                if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
+        // ========================================
+        // SUPABASE SYNC FUNCTIONS
+        // ========================================
+        async function syncToCloud(showToastMsg = true) {
+            if (!SYNC_ENABLED || !supabaseClient) {
+                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
+                return;
             }
-        } catch (e) {
-            console.error('❌ Sync error:', e);
-            if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
-        }
-    }
 
-    async function syncFromCloud(showToastMsg = true) {
-        if (!SYNC_ENABLED || !supabaseClient) {
-            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
-            return false;
-        }
+            try {
+                const store = {
+                    data: data,
+                    nextDateId: nextDateId,
+                    nextRowId: nextRowId,
+                    nextColId: nextColId,
+                    customColumns: customColumns,
+                    savedCustomColumns: savedCustomColumns,
+                    savedDates: savedDates,
+                    editModes: editModes,
+                    lastUpdated: new Date().toISOString()
+                };
 
-        try {
-            console.log('📥 Pulling from cloud...');
+                const { error } = await supabaseClient
+                    .from('expenditure_data')
+                    .upsert({
+                        id: 1,
+                        data: store,
+                        updated_by: currentUser ? currentUser.username : 'anonymous',
+                        last_updated: new Date().toISOString()
+                    }, { onConflict: 'id' });
 
-            const { data: result, error } = await supabaseClient
-                .from('expenditure_data')
-                .select('data, updated_by, last_updated')
-                .eq('id', 1)
-                .single();
-
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
+                if (error) {
+                    console.error('❌ Sync error:', error);
+                    if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
                 } else {
-                    if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
+                    console.log('✅ Synced to cloud');
+                    if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
                 }
+            } catch (e) {
+                console.error('❌ Sync error:', e);
+                if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
+            }
+        }
+
+        async function syncFromCloud(showToastMsg = true) {
+            if (!SYNC_ENABLED || !supabaseClient) {
+                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
                 return false;
             }
 
-            if (result && result.data) {
-                const cloudData = result.data;
-
-                data = cloudData.data || data;
-                nextDateId = cloudData.nextDateId || nextDateId;
-                nextRowId = cloudData.nextRowId || nextRowId;
-                nextColId = cloudData.nextColId || nextColId;
-                customColumns = cloudData.customColumns || customColumns;
-                savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
-                savedDates = cloudData.savedDates || savedDates;
-                editModes = cloudData.editModes || editModes;
-
-                saveToStorage();
-
-                console.log('✅ Pulled from cloud');
-
-                render();
-                setTimeout(() => {
-                    updateTotalsOnly();
-                    console.log('✅ Totals updated after cloud sync');
-                }, 100);
-
-                if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
-                return true;
-            }
-        } catch (e) {
-            console.error('❌ Pull error:', e);
-            if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
-        }
-        return false;
-    }
-
-    // ========================================
-    // USER MANAGEMENT
-    // ========================================
-    const USERS_KEY = 'starlink_users';
-
-    const DEFAULT_USERS = [
-        { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
-        { id: 2, username: 'grace', password: 'grace123', role: 'user' }
-    ];
-
-    function getUsers() {
-        const stored = localStorage.getItem(USERS_KEY);
-        if (stored) {
             try {
-                const users = JSON.parse(stored);
-                if (users && users.length > 0) return users;
-            } catch (e) {}
-        }
-        localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
-        return DEFAULT_USERS;
-    }
+                console.log('📥 Pulling from cloud...');
 
-    function saveUsers(users) {
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
+                const { data: result, error } = await supabaseClient
+                    .from('expenditure_data')
+                    .select('data, updated_by, last_updated')
+                    .eq('id', 1)
+                    .single();
 
-    function findUser(username) {
-        const users = getUsers();
-        return users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    }
+                if (error) {
+                    if (error.code === 'PGRST116') {
+                        if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
+                    } else {
+                        if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
+                    }
+                    return false;
+                }
 
-    function authenticateUser(username, password) {
-        const user = findUser(username);
-        if (user && user.password === password) return user;
-        return null;
-    }
+                if (result && result.data) {
+                    const cloudData = result.data;
 
-    function updateUserPassword(userId, newPassword) {
-        const users = getUsers();
-        const index = users.findIndex(u => u.id === userId);
-        if (index === -1) return false;
-        users[index].password = newPassword;
-        saveUsers(users);
-        return true;
-    }
+                    data = cloudData.data || data;
+                    nextDateId = cloudData.nextDateId || nextDateId;
+                    nextRowId = cloudData.nextRowId || nextRowId;
+                    nextColId = cloudData.nextColId || nextColId;
+                    customColumns = cloudData.customColumns || customColumns;
+                    savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
+                    savedDates = cloudData.savedDates || savedDates;
+                    editModes = cloudData.editModes || editModes;
 
-    function addUser(username, password, role = 'user') {
-        const users = getUsers();
-        if (findUser(username)) return false;
-        const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
-        users.push({ id: maxId + 1, username, password, role });
-        saveUsers(users);
-        return true;
-    }
+                    saveToStorage();
 
-    function updateUser(id, username, password, role) {
-        const users = getUsers();
-        const index = users.findIndex(u => u.id === id);
-        if (index === -1) return false;
-        const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
-        if (existing) return false;
-        users[index] = {...users[index], username, password, role };
-        saveUsers(users);
-        return true;
-    }
+                    console.log('✅ Pulled from cloud');
 
-    function deleteUser(id) {
-        const users = getUsers();
-        const filtered = users.filter(u => u.id !== id);
-        if (filtered.length === users.length) return false;
-        saveUsers(filtered);
-        return true;
-    }
+                    render();
+                    setTimeout(() => {
+                        updateTotalsOnly();
+                        console.log('✅ Totals updated after cloud sync');
+                    }, 100);
 
-    // ========================================
-    // DOM REFS - LOGIN
-    // ========================================
-    const loginScreen = document.getElementById('loginScreen');
-    const forgotScreen = document.getElementById('forgotScreen');
-    const changePasswordScreen = document.getElementById('changePasswordScreen');
-    const mainApp = document.getElementById('mainApp');
-    const usernameInput = document.getElementById('usernameInput');
-    const passwordInput = document.getElementById('passwordInput');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginError = document.getElementById('loginError');
-    const loginSuccess = document.getElementById('loginSuccess');
-    const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-    const backToLoginBtn = document.getElementById('backToLoginBtn');
-    const changePasswordBtn = document.getElementById('changePasswordBtn');
-    const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
-    const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
-    const changePasswordOld = document.getElementById('changePasswordOld');
-    const changePasswordNew = document.getElementById('changePasswordNew');
-    const changePasswordConfirm = document.getElementById('changePasswordConfirm');
-    const changePasswordError = document.getElementById('changePasswordError');
-    const changePasswordSuccess = document.getElementById('changePasswordSuccess');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userDisplay = document.getElementById('userDisplay');
-
-    const adminPanelBtn = document.getElementById('adminPanelBtn');
-    const adminPanel = document.getElementById('adminPanel');
-    const adminPanelClose = document.getElementById('adminPanelClose');
-    const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
-    const userList = document.getElementById('userList');
-    const addUserBtn = document.getElementById('addUserBtn');
-
-    const userModal = document.getElementById('userModal');
-    const userModalTitle = document.getElementById('userModalTitle');
-    const userModalUsername = document.getElementById('userModalUsername');
-    const userModalPassword = document.getElementById('userModalPassword');
-    const userModalRole = document.getElementById('userModalRole');
-    const userModalError = document.getElementById('userModalError');
-    const userModalSave = document.getElementById('userModalSave');
-    const userModalCancel = document.getElementById('userModalCancel');
-    const userModalClose = document.getElementById('userModalClose');
-
-    const syncNowBtn = document.getElementById('syncNowBtn');
-
-    let editingUserId = null;
-    let currentUser = null;
-
-    // ========================================
-    // LOGIN FUNCTIONS
-    // ========================================
-    function checkLogin() {
-        const savedUser = sessionStorage.getItem('starlink_user');
-        if (savedUser) {
-            try {
-                currentUser = JSON.parse(savedUser);
-                const users = getUsers();
-                const exists = users.find(u => u.id === currentUser.id);
-                if (exists) {
-                    showMainApp();
+                    if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
                     return true;
                 }
-            } catch (e) {}
-        }
-        return false;
-    }
-
-    function attemptLogin() {
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value.trim();
-
-        if (!username || !password) {
-            loginError.textContent = '❌ Please enter both username and password.';
-            loginError.style.display = 'block';
-            loginSuccess.style.display = 'none';
-            return;
-        }
-
-        const user = authenticateUser(username, password);
-        if (user) {
-            loginError.style.display = 'none';
-            loginSuccess.textContent = '✅ Login successful! Redirecting...';
-            loginSuccess.style.display = 'block';
-            currentUser = user;
-            sessionStorage.setItem('starlink_user', JSON.stringify(user));
-            setTimeout(() => {
-                showMainApp();
-            }, 600);
-        } else {
-            loginSuccess.style.display = 'none';
-            loginError.textContent = '❌ Invalid username or password.';
-            loginError.style.display = 'block';
-            passwordInput.value = '';
-            passwordInput.focus();
-            setTimeout(() => {
-                loginError.style.display = 'none';
-            }, 3000);
-        }
-    }
-
-    function showMainApp() {
-        loginScreen.style.display = 'none';
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'none';
-        mainApp.style.display = 'block';
-        if (userDisplay) {
-            userDisplay.textContent = '👤 ' + currentUser.username;
-        }
-        if (adminPanelBtn) {
-            adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
-        }
-        if (typeof initMainApp === 'function') {
-            initMainApp();
-        }
-    }
-
-    function logout() {
-        sessionStorage.removeItem('starlink_user');
-        currentUser = null;
-        mainApp.style.display = 'none';
-        loginScreen.style.display = 'flex';
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'none';
-        usernameInput.value = '';
-        passwordInput.value = '';
-        loginError.style.display = 'none';
-        loginSuccess.style.display = 'none';
-        usernameInput.focus();
-    }
-
-    function showForgotScreen() {
-        loginScreen.style.display = 'none';
-        forgotScreen.style.display = 'flex';
-        changePasswordScreen.style.display = 'none';
-        const forgotUsername = document.getElementById('forgotUsername');
-        if (forgotUsername) forgotUsername.focus();
-    }
-
-    function showChangePasswordScreen() {
-        loginScreen.style.display = 'none';
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'flex';
-        changePasswordOld.value = '';
-        changePasswordNew.value = '';
-        changePasswordConfirm.value = '';
-        changePasswordError.style.display = 'none';
-        changePasswordSuccess.style.display = 'none';
-        changePasswordOld.focus();
-    }
-
-    function showLoginScreen() {
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'none';
-        loginScreen.style.display = 'flex';
-        usernameInput.focus();
-    }
-
-    function handleChangePassword() {
-        const oldPassword = changePasswordOld.value.trim();
-        const newPassword = changePasswordNew.value.trim();
-        const confirmPassword = changePasswordConfirm.value.trim();
-
-        changePasswordError.style.display = 'none';
-        changePasswordSuccess.style.display = 'none';
-
-        if (!oldPassword || !newPassword || !confirmPassword) {
-            changePasswordError.textContent = '❌ Please fill in all fields.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (oldPassword !== currentUser.password) {
-            changePasswordError.textContent = '❌ Old password is incorrect.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (newPassword !== confirmPassword) {
-            changePasswordError.textContent = '❌ New passwords do not match.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (newPassword.length < 4) {
-            changePasswordError.textContent = '❌ New password must be at least 4 characters.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (updateUserPassword(currentUser.id, newPassword)) {
-            currentUser.password = newPassword;
-            sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
-            changePasswordSuccess.textContent = '✅ Password changed successfully!';
-            changePasswordSuccess.style.display = 'block';
-            setTimeout(() => {
-                showLoginScreen();
-            }, 2000);
-        } else {
-            changePasswordError.textContent = '❌ Failed to update password.';
-            changePasswordError.style.display = 'block';
-        }
-    }
-
-    function handleForgotPassword() {
-        const forgotUsername = document.getElementById('forgotUsername');
-        const forgotError = document.getElementById('forgotError');
-        const forgotSuccess = document.getElementById('forgotSuccess');
-        
-        if (!forgotUsername) return;
-        
-        const username = forgotUsername.value.trim();
-        forgotError.style.display = 'none';
-        forgotSuccess.style.display = 'none';
-        
-        if (!username) {
-            forgotError.textContent = '❌ Please enter your username.';
-            forgotError.style.display = 'block';
-            return;
-        }
-        
-        const user = findUser(username);
-        if (user) {
-            if (currentUser && currentUser.role === 'admin') {
-                forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
-            } else {
-                forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
+            } catch (e) {
+                console.error('❌ Pull error:', e);
+                if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
             }
-            forgotSuccess.style.display = 'block';
-            setTimeout(() => {
-                showLoginScreen();
-            }, 3000);
-        } else {
-            forgotError.textContent = '❌ Username not found.';
-            forgotError.style.display = 'block';
-            setTimeout(() => {
-                forgotError.style.display = 'none';
-            }, 3000);
-        }
-    }
-
-    // ========================================
-    // ADMIN PANEL
-    // ========================================
-    function renderUserList() {
-        const users = getUsers();
-        if (!userList) return;
-
-        if (users.length === 0) {
-            userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
-            return;
+            return false;
         }
 
-        let html = '';
-        users.forEach(user => {
-            const isCurrent = currentUser && currentUser.id === user.id;
-            html += `
+        // ========================================
+        // USER MANAGEMENT
+        // ========================================
+        const USERS_KEY = 'starlink_users';
+
+        const DEFAULT_USERS = [
+            { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
+            { id: 2, username: 'grace', password: 'grace123', role: 'user' }
+        ];
+
+        function getUsers() {
+            const stored = localStorage.getItem(USERS_KEY);
+            if (stored) {
+                try {
+                    const users = JSON.parse(stored);
+                    if (users && users.length > 0) return users;
+                } catch (e) {}
+            }
+            localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+            return DEFAULT_USERS;
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        }
+
+        function findUser(username) {
+            const users = getUsers();
+            return users.find(u => u.username.toLowerCase() === username.toLowerCase());
+        }
+
+        function authenticateUser(username, password) {
+            const user = findUser(username);
+            if (user && user.password === password) return user;
+            return null;
+        }
+
+        function updateUserPassword(userId, newPassword) {
+            const users = getUsers();
+            const index = users.findIndex(u => u.id === userId);
+            if (index === -1) return false;
+            users[index].password = newPassword;
+            saveUsers(users);
+            return true;
+        }
+
+        function addUser(username, password, role = 'user') {
+            const users = getUsers();
+            if (findUser(username)) return false;
+            const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
+            users.push({ id: maxId + 1, username, password, role });
+            saveUsers(users);
+            return true;
+        }
+
+        function updateUser(id, username, password, role) {
+            const users = getUsers();
+            const index = users.findIndex(u => u.id === id);
+            if (index === -1) return false;
+            const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
+            if (existing) return false;
+            users[index] = {...users[index], username, password, role };
+            saveUsers(users);
+            return true;
+        }
+
+        function deleteUser(id) {
+            const users = getUsers();
+            const filtered = users.filter(u => u.id !== id);
+            if (filtered.length === users.length) return false;
+            saveUsers(filtered);
+            return true;
+        }
+
+        // ========================================
+        // DOM REFS - LOGIN
+        // ========================================
+        const loginScreen = document.getElementById('loginScreen');
+        const forgotScreen = document.getElementById('forgotScreen');
+        const changePasswordScreen = document.getElementById('changePasswordScreen');
+        const mainApp = document.getElementById('mainApp');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const loginSuccess = document.getElementById('loginSuccess');
+        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const backToLoginBtn = document.getElementById('backToLoginBtn');
+        const changePasswordBtn = document.getElementById('changePasswordBtn');
+        const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
+        const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
+        const changePasswordOld = document.getElementById('changePasswordOld');
+        const changePasswordNew = document.getElementById('changePasswordNew');
+        const changePasswordConfirm = document.getElementById('changePasswordConfirm');
+        const changePasswordError = document.getElementById('changePasswordError');
+        const changePasswordSuccess = document.getElementById('changePasswordSuccess');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userDisplay = document.getElementById('userDisplay');
+
+        const adminPanelBtn = document.getElementById('adminPanelBtn');
+        const adminPanel = document.getElementById('adminPanel');
+        const adminPanelClose = document.getElementById('adminPanelClose');
+        const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
+        const userList = document.getElementById('userList');
+        const addUserBtn = document.getElementById('addUserBtn');
+
+        const userModal = document.getElementById('userModal');
+        const userModalTitle = document.getElementById('userModalTitle');
+        const userModalUsername = document.getElementById('userModalUsername');
+        const userModalPassword = document.getElementById('userModalPassword');
+        const userModalRole = document.getElementById('userModalRole');
+        const userModalError = document.getElementById('userModalError');
+        const userModalSave = document.getElementById('userModalSave');
+        const userModalCancel = document.getElementById('userModalCancel');
+        const userModalClose = document.getElementById('userModalClose');
+
+        const syncNowBtn = document.getElementById('syncNowBtn');
+
+        let editingUserId = null;
+        let currentUser = null;
+
+        // ========================================
+        // LOGIN FUNCTIONS
+        // ========================================
+        function checkLogin() {
+            const savedUser = sessionStorage.getItem('starlink_user');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    const users = getUsers();
+                    const exists = users.find(u => u.id === currentUser.id);
+                    if (exists) {
+                        showMainApp();
+                        return true;
+                    }
+                } catch (e) {}
+            }
+            return false;
+        }
+
+        function attemptLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!username || !password) {
+                loginError.textContent = '❌ Please enter both username and password.';
+                loginError.style.display = 'block';
+                loginSuccess.style.display = 'none';
+                return;
+            }
+
+            const user = authenticateUser(username, password);
+            if (user) {
+                loginError.style.display = 'none';
+                loginSuccess.textContent = '✅ Login successful! Redirecting...';
+                loginSuccess.style.display = 'block';
+                currentUser = user;
+                sessionStorage.setItem('starlink_user', JSON.stringify(user));
+                setTimeout(() => {
+                    showMainApp();
+                }, 600);
+            } else {
+                loginSuccess.style.display = 'none';
+                loginError.textContent = '❌ Invalid username or password.';
+                loginError.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
+                setTimeout(() => {
+                    loginError.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function showMainApp() {
+            loginScreen.style.display = 'none';
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'none';
+            mainApp.style.display = 'block';
+            if (userDisplay) {
+                userDisplay.textContent = '👤 ' + currentUser.username;
+            }
+            if (adminPanelBtn) {
+                adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+            }
+            if (typeof initMainApp === 'function') {
+                initMainApp();
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('starlink_user');
+            currentUser = null;
+            mainApp.style.display = 'none';
+            loginScreen.style.display = 'flex';
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'none';
+            usernameInput.value = '';
+            passwordInput.value = '';
+            loginError.style.display = 'none';
+            loginSuccess.style.display = 'none';
+            usernameInput.focus();
+        }
+
+        function showForgotScreen() {
+            loginScreen.style.display = 'none';
+            forgotScreen.style.display = 'flex';
+            changePasswordScreen.style.display = 'none';
+            const forgotUsername = document.getElementById('forgotUsername');
+            if (forgotUsername) forgotUsername.focus();
+        }
+
+        function showChangePasswordScreen() {
+            loginScreen.style.display = 'none';
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'flex';
+            changePasswordOld.value = '';
+            changePasswordNew.value = '';
+            changePasswordConfirm.value = '';
+            changePasswordError.style.display = 'none';
+            changePasswordSuccess.style.display = 'none';
+            changePasswordOld.focus();
+        }
+
+        function showLoginScreen() {
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'none';
+            loginScreen.style.display = 'flex';
+            usernameInput.focus();
+        }
+
+        function handleChangePassword() {
+            const oldPassword = changePasswordOld.value.trim();
+            const newPassword = changePasswordNew.value.trim();
+            const confirmPassword = changePasswordConfirm.value.trim();
+
+            changePasswordError.style.display = 'none';
+            changePasswordSuccess.style.display = 'none';
+
+            if (!oldPassword || !newPassword || !confirmPassword) {
+                changePasswordError.textContent = '❌ Please fill in all fields.';
+                changePasswordError.style.display = 'block';
+                return;
+            }
+
+            if (oldPassword !== currentUser.password) {
+                changePasswordError.textContent = '❌ Old password is incorrect.';
+                changePasswordError.style.display = 'block';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                changePasswordError.textContent = '❌ New passwords do not match.';
+                changePasswordError.style.display = 'block';
+                return;
+            }
+
+            if (newPassword.length < 4) {
+                changePasswordError.textContent = '❌ New password must be at least 4 characters.';
+                changePasswordError.style.display = 'block';
+                return;
+            }
+
+            if (updateUserPassword(currentUser.id, newPassword)) {
+                currentUser.password = newPassword;
+                sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
+                changePasswordSuccess.textContent = '✅ Password changed successfully!';
+                changePasswordSuccess.style.display = 'block';
+                setTimeout(() => {
+                    showLoginScreen();
+                }, 2000);
+            } else {
+                changePasswordError.textContent = '❌ Failed to update password.';
+                changePasswordError.style.display = 'block';
+            }
+        }
+
+        function handleForgotPassword() {
+            const forgotUsername = document.getElementById('forgotUsername');
+            const forgotError = document.getElementById('forgotError');
+            const forgotSuccess = document.getElementById('forgotSuccess');
+
+            if (!forgotUsername) return;
+
+            const username = forgotUsername.value.trim();
+            forgotError.style.display = 'none';
+            forgotSuccess.style.display = 'none';
+
+            if (!username) {
+                forgotError.textContent = '❌ Please enter your username.';
+                forgotError.style.display = 'block';
+                return;
+            }
+
+            const user = findUser(username);
+            if (user) {
+                if (currentUser && currentUser.role === 'admin') {
+                    forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
+                } else {
+                    forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
+                }
+                forgotSuccess.style.display = 'block';
+                setTimeout(() => {
+                    showLoginScreen();
+                }, 3000);
+            } else {
+                forgotError.textContent = '❌ Username not found.';
+                forgotError.style.display = 'block';
+                setTimeout(() => {
+                    forgotError.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // ========================================
+        // ADMIN PANEL
+        // ========================================
+        function renderUserList() {
+            const users = getUsers();
+            if (!userList) return;
+
+            if (users.length === 0) {
+                userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
+                return;
+            }
+
+            let html = '';
+            users.forEach(user => {
+                        const isCurrent = currentUser && currentUser.id === user.id;
+                        html += `
                 <div class="user-item ${isCurrent ? 'current-user' : ''}">
                     <div class="user-info">
                         <span class="user-icon">${user.role === 'admin' ? '👑' : '👤'}</span>
@@ -811,7 +811,6 @@
         getAllColumns().forEach(col => {
             row[col.key + '_desc'] = '';
             row[col.key + '_transaction'] = '';
-            row[col.key + '_ref'] = '';
             row[col.key + '_amount'] = '';
         });
         return row;
@@ -835,7 +834,6 @@
             group.rows.forEach(row => {
                 row[newCol.key + '_desc'] = '';
                 row[newCol.key + '_transaction'] = '';
-                row[newCol.key + '_ref'] = '';
                 row[newCol.key + '_amount'] = '';
             });
         });
@@ -859,7 +857,6 @@
             group.rows.forEach(row => {
                 row[savedCol.key + '_desc'] = row[colToSave.key + '_desc'] || '';
                 row[savedCol.key + '_transaction'] = row[colToSave.key + '_transaction'] || '';
-                row[savedCol.key + '_ref'] = row[colToSave.key + '_ref'] || '';
                 row[savedCol.key + '_amount'] = row[colToSave.key + '_amount'] || '';
             });
         });
@@ -871,7 +868,6 @@
             group.rows.forEach(row => {
                 delete row[colToSave.key + '_desc'];
                 delete row[colToSave.key + '_transaction'];
-                delete row[colToSave.key + '_ref'];
                 delete row[colToSave.key + '_amount'];
             });
         });
@@ -888,7 +884,6 @@
                 group.rows.forEach(row => {
                     delete row[colKey + '_desc'];
                     delete row[colKey + '_transaction'];
-                    delete row[colKey + '_ref'];
                     delete row[colKey + '_amount'];
                 });
             });
@@ -904,7 +899,6 @@
                 group.rows.forEach(row => {
                     delete row[colKey + '_desc'];
                     delete row[colKey + '_transaction'];
-                    delete row[colKey + '_ref'];
                     delete row[colKey + '_amount'];
                 });
             });
@@ -929,21 +923,7 @@
                 saveBtn.classList.remove('saved');
             }, 2000);
         }
-    }
-
-    function resetDateEntry(dateId) {
-        if (!confirm('Reset all transactions for this date? This will clear all data.')) return;
-
-        const group = data.find(d => d.id === dateId);
-        if (!group) return;
-
-        group.rows = [];
-        const newRow = createEmptyRow();
-        group.rows.push(newRow);
-
-        savedDates[dateId] = false;
-        editModes[dateId] = false;
-        render();
+        scheduleCloudSync();
     }
 
     function editDateEntry(dateId) {
@@ -977,10 +957,11 @@
         const newRow = createEmptyRow();
         group.rows.push(newRow);
         render();
+        scheduleCloudSync();
     }
 
     // ========================================
-    // DEBOUNCED SAVE
+    // DEBOUNCED SAVE (Auto-save for amounts)
     // ========================================
     let saveTimeout = null;
 
@@ -1009,7 +990,11 @@
         row[key] = value;
         updateTotalsOnly();
         debouncedSave();
-        scheduleCloudSync();
+        
+        // Auto-sync to cloud for amount changes
+        if (key.includes('_amount')) {
+            scheduleCloudSync();
+        }
     }
 
     // ========================================
@@ -1144,12 +1129,10 @@
                             const isSavedCol = col.isSaved || false;
                             const descKey = col.key + '_desc';
                             const transKey = col.key + '_transaction';
-                            const refKey = col.key + '_ref';
                             const amountKey = col.key + '_amount';
 
                             const descVal = row[descKey] || '';
                             const transVal = row[transKey] || '';
-                            const refVal = row[refKey] || '';
                             const amountVal = row[amountKey] || '';
 
                             let descDisplay = '';
@@ -1179,14 +1162,10 @@
                                 <div class="column-group ${isCustom ? 'custom-column' : ''}">
                                     <span class="field-header">Description</span>
                                     ${descDisplay}
-                                    <span class="field-header">Transaction</span>
+                                    <span class="field-header">Transaction Reference</span>
                                     ${showEditMode ? 
-                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction" rows="1">${transVal}</textarea>` : 
+                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1">${transVal}</textarea>` : 
                                         `<div class="desc-display">${transVal || '-'}</div>`}
-                                    <span class="field-header">Reference</span>
-                                    ${showEditMode ? 
-                                        `<textarea class="ref-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${refKey}" placeholder="Reference" rows="1">${refVal}</textarea>` : 
-                                        `<div class="desc-display">${refVal || '-'}</div>`}
                                     <span class="field-header">Amount</span>
                                     ${showEditMode ? 
                                         `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
@@ -1213,7 +1192,6 @@
                     <div class="date-total-actions">
                         <button class="action-btn save-btn ${isSaved ? 'saved' : ''}" data-date-id="${group.id}">💾 Save</button>
                         <button class="action-btn edit-btn" data-date-id="${group.id}">✏️ Edit</button>
-                        <button class="action-btn reset-btn" data-date-id="${group.id}">🔄 Reset</button>
                         <button class="action-btn delete-date-btn" data-date-id="${group.id}">🗑️ Delete</button>
                     </div>
                     <div class="date-total-right">
@@ -1255,11 +1233,11 @@
         const grandTotal = computeGrandTotal(filtered);
         grandTotalEl.textContent = grandTotal.toFixed(2);
 
-        document.querySelectorAll('.desc-input, .trans-input, .ref-input, .amount-input').forEach(input => {
+        document.querySelectorAll('.desc-input, .trans-input, .amount-input').forEach(input => {
             input.addEventListener('input', handleInputChange);
         });
 
-        document.querySelectorAll('.desc-input, .trans-input, .ref-input').forEach(textarea => {
+        document.querySelectorAll('.desc-input, .trans-input').forEach(textarea => {
             textarea.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
@@ -1304,13 +1282,6 @@
             btn.addEventListener('click', (e) => {
                 const dateId = parseInt(e.target.dataset.dateId);
                 editDateEntry(dateId);
-            });
-        });
-
-        document.querySelectorAll('.date-total-row .reset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const dateId = parseInt(e.target.dataset.dateId);
-                resetDateEntry(dateId);
             });
         });
 
@@ -1444,9 +1415,6 @@
             .trans-row td { background: #f5f3ec; }
             .trans-row td:first-child { background: #f5f3ec; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .trans-row .trans-text { font-size: 0.85rem; color: #1a1a1d; text-align: left; }
-            .ref-row td { background: #f2f0e8; }
-            .ref-row td:first-child { background: #f2f0e8; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
-            .ref-row .ref-text { font-size: 0.85rem; color: #1a1a1d; text-align: left; }
             .amount-row td { background: #efece4; }
             .amount-row td:first-child { background: #efece4; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .amount-row .amount-text { font-weight: 700; color: #0a2a44; font-size: 0.9rem; text-align: right; }
@@ -1495,19 +1463,10 @@
                         printHtml += `</tr>`;
 
                         printHtml += `<tr class="trans-row">`;
-                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">TRANSACTION</td>`;
+                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">TRANSACTION REFERENCE</td>`;
                         allColumns.forEach(col => {
                             const transVal = row[col.key + '_transaction'] || '';
                             printHtml += `<td class="trans-text" style="text-align:left; font-size:0.85rem;">${transVal || '-'}</td>`;
-                        });
-                        printHtml += `<td></td>`;
-                        printHtml += `</tr>`;
-
-                        printHtml += `<tr class="ref-row">`;
-                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">REFERENCE</td>`;
-                        allColumns.forEach(col => {
-                            const refVal = row[col.key + '_ref'] || '';
-                            printHtml += `<td class="ref-text" style="text-align:left; font-size:0.85rem;">${refVal || '-'}</td>`;
                         });
                         printHtml += `<td></td>`;
                         printHtml += `</tr>`;
