@@ -84,6 +84,9 @@
             }
 
             try {
+                // Sort data before syncing
+                data = sortDataByDate(data);
+
                 const store = {
                     data: data,
                     nextDateId: nextDateId,
@@ -154,6 +157,9 @@
                     savedDates = cloudData.savedDates || savedDates;
                     editModes = cloudData.editModes || editModes;
 
+                    // Sort data by date
+                    data = sortDataByDate(data);
+
                     saveToStorage();
 
                     console.log('✅ Pulled from cloud');
@@ -172,6 +178,18 @@
                 if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
             }
             return false;
+        }
+
+        // ========================================
+        // SORT DATA BY DATE (LATEST FIRST)
+        // ========================================
+        function sortDataByDate(dataArray) {
+            if (!dataArray || dataArray.length === 0) return dataArray;
+            return [...dataArray].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateB - dateA; // Latest first
+            });
         }
 
         // ========================================
@@ -502,6 +520,7 @@
             let html = '';
             users.forEach(user => {
                         const isCurrent = currentUser && currentUser.id === user.id;
+                        const isAdmin = currentUser && currentUser.role === 'admin';
                         html += `
                 <div class="user-item ${isCurrent ? 'current-user' : ''}">
                     <div class="user-info">
@@ -512,11 +531,13 @@
                         </div>
                     </div>
                     <div class="user-actions">
-                        ${!isCurrent ? `
+                        ${isAdmin && !isCurrent ? `
                             <button class="btn-edit-user" data-id="${user.id}">✏️ Edit</button>
                             <button class="btn-delete-user" data-id="${user.id}">🗑️ Delete</button>
-                        ` : `
+                        ` : isCurrent ? `
                             <span style="font-size:0.7rem; color:var(--text-dim);">Current user</span>
+                        ` : `
+                            <span style="font-size:0.7rem; color:var(--text-dim);">View only</span>
                         `}
                     </div>
                 </div>
@@ -525,26 +546,29 @@
 
         userList.innerHTML = html;
 
-        document.querySelectorAll('.btn-edit-user').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = parseInt(this.dataset.id);
-                openUserModal(id);
+        // Only admins can edit/delete users
+        if (currentUser && currentUser.role === 'admin') {
+            document.querySelectorAll('.btn-edit-user').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = parseInt(this.dataset.id);
+                    openUserModal(id);
+                });
             });
-        });
 
-        document.querySelectorAll('.btn-delete-user').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = parseInt(this.dataset.id);
-                if (confirm('Delete this user?')) {
-                    if (deleteUser(id)) {
-                        renderUserList();
-                        if (currentUser && currentUser.id === id) {
-                            logout();
+            document.querySelectorAll('.btn-delete-user').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = parseInt(this.dataset.id);
+                    if (confirm('Delete this user?')) {
+                        if (deleteUser(id)) {
+                            renderUserList();
+                            if (currentUser && currentUser.id === id) {
+                                logout();
+                            }
                         }
                     }
-                }
+                });
             });
-        });
+        }
     }
 
     function openAdminPanel() {
@@ -625,6 +649,13 @@
                 userModalError.style.display = 'block';
             }
         }
+    }
+
+    // ========================================
+    // CHECK IF USER CAN EDIT
+    // ========================================
+    function userCanEdit() {
+        return currentUser && currentUser.role === 'admin';
     }
 
     // ========================================
@@ -765,7 +796,8 @@
                 return d.date <= dateTo;
             });
         }
-        return filtered;
+        // Sort by date (latest first)
+        return sortDataByDate(filtered);
     }
 
     function computeColumnTotals(filteredData) {
@@ -927,6 +959,11 @@
     }
 
     function editDateEntry(dateId) {
+        // Only admin can edit
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can edit records', 'error');
+            return;
+        }
         editModes[dateId] = !editModes[dateId];
         if (editModes[dateId]) {
             savedDates[dateId] = false;
@@ -948,6 +985,11 @@
     }
 
     function addTransactionRow(dateId) {
+        // Only admin can add rows
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can add rows', 'error');
+            return;
+        }
         const group = data.find(d => d.id === dateId);
         if (!group) {
             alert('Date entry not found');
@@ -976,6 +1018,12 @@
     // HANDLE INPUT CHANGE
     // ========================================
     function handleInputChange(e) {
+        // Only admin can edit
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can edit records', 'error');
+            return;
+        }
+        
         const input = e.target;
         const dateId = parseInt(input.dataset.dateId);
         const rowId = parseInt(input.dataset.rowId);
@@ -1064,27 +1112,16 @@
     }
 
     // ========================================
-    // RENDER
+    // RENDER - FIXED: Column headers repeat for each date
     // ========================================
     function render() {
         const filtered = getFilteredData();
         const allColumns = getAllColumns();
+        const canEdit = userCanEdit();
 
         let html = '<table>';
 
-        html += '<thead><tr>';
-        html += '<th style="min-width:80px;">DATE</th>';
-        allColumns.forEach(col => {
-            const isCustom = col.isCustom || false;
-            const isSaved = col.isSaved || false;
-            html += `<th style="min-width:120px; ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}">
-                ${col.label}
-                ${isCustom ? `<br><span style="font-weight:400; font-size:0.55rem; color:#c89a5b;">${isSaved ? '(saved)' : '(temp)'}</span>` : ''}
-            </th>`;
-        });
-        html += '<th style="min-width:70px;">TOTAL</th>';
-        html += '<th style="min-width:40px;"></th>';
-        html += '</tr></thead>';
+        // REMOVED: Global thead - headers will now be inside each date group
 
         html += '<tbody>';
 
@@ -1100,17 +1137,38 @@
                 const isEditing = editModes[group.id] || false;
                 const showEditMode = isEditing || !isSaved;
 
+                // ========================================
+                // DATE HEADER ROW
+                // ========================================
                 html += `<tr class="date-header-row">`;
                 html += `<td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
                 html += `<div class="date-label">
                     <span class="date-badge">📅 ${group.date || 'No date'}</span>
-                    <button class="add-col-btn-header" title="Add a new custom expenditure column">
-                        ➕ Add Expenditure
-                    </button>
+                    ${canEdit ? `<button class="add-col-btn-header" title="Add a new custom expenditure column">➕ Add Expenditure</button>` : ''}
                 </div>`;
                 html += `</td>`;
                 html += `</tr>`;
 
+                // ========================================
+                // COLUMN HEADERS - REPEAT FOR EACH DATE
+                // ========================================
+                html += `<tr class="date-column-header">`;
+                html += `<td style="min-width:80px; font-weight:700; color:var(--accent-brass); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--table-header);">COLUMNS</td>`;
+                allColumns.forEach(col => {
+                    const isCustom = col.isCustom || false;
+                    const isSaved = col.isSaved || false;
+                    html += `<td style="min-width:120px; text-align:center; font-weight:700; font-size:0.75rem; color:var(--accent-brass); background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}">
+                        ${col.label}
+                        ${isCustom ? `<br><span style="font-weight:400; font-size:0.55rem; color:#c89a5b;">${isSaved ? '(saved)' : '(temp)'}</span>` : ''}
+                    </td>`;
+                });
+                html += `<td style="min-width:70px; text-align:center; font-weight:700; color:var(--accent-brass); background:var(--table-header);">TOTAL</td>`;
+                html += `<td style="min-width:40px; background:var(--table-header);"></td>`;
+                html += `</tr>`;
+
+                // ========================================
+                // DATA ROWS
+                // ========================================
                 if (group.rows.length === 0) {
                     html += `<tr><td colspan="${allColumns.length + 3}" style="text-align:center; padding:16px; color:var(--text-dim); background:var(--bg-card);">
                         No transactions — click "Add Row" to add
@@ -1136,7 +1194,7 @@
                             const amountVal = row[amountKey] || '';
 
                             let descDisplay = '';
-                            if (showEditMode) {
+                            if (showEditMode && canEdit) {
                                 descDisplay = `
                                     <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${descVal}</textarea>
                                 `;
@@ -1163,14 +1221,14 @@
                                     <span class="field-header">Description</span>
                                     ${descDisplay}
                                     <span class="field-header">Transaction Reference</span>
-                                    ${showEditMode ? 
+                                    ${showEditMode && canEdit ? 
                                         `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1">${transVal}</textarea>` : 
                                         `<div class="desc-display">${transVal || '-'}</div>`}
                                     <span class="field-header">Amount</span>
-                                    ${showEditMode ? 
+                                    ${showEditMode && canEdit ? 
                                         `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
                                         `<div class="desc-display" style="font-weight:700; text-align:right; color:var(--accent-teal);">${formatNumber(amountVal).toFixed(2)}</div>`}
-                                    ${isCustom ? 
+                                    ${isCustom && canEdit ? 
                                         `<div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
                                             ${!isSavedCol ? `<button class="save-col-btn" data-col-key="${col.key}" title="Save this column permanently">💾 Save</button>` : ''}
                                             <button class="delete-col-btn" data-col-key="${col.key}" title="Remove this column">✕ Remove</button>
@@ -1180,26 +1238,33 @@
                         });
 
                         html += `<td class="row-total-col" data-label="Total">${getRowTotal(row).toFixed(2)}</td>`;
-                        html += `<td><button class="delete-row-btn" data-date-id="${group.id}" data-row-id="${row.id}" title="Delete this transaction">🗑️ Delete</button></td>`;
+                        html += `<td>${canEdit ? `<button class="delete-row-btn" data-date-id="${group.id}" data-row-id="${row.id}" title="Delete this transaction">🗑️ Delete</button>` : ''}</td>`;
                         html += `</tr>`;
                     });
                 }
 
+                // ========================================
+                // DATE TOTAL ROW
+                // ========================================
                 const dateTotal = getDateGroupTotal(group);
                 html += `<tr class="date-total-row">`;
                 html += `<td colspan="${allColumns.length + 2}" style="padding:8px 16px;" data-label="">`;
                 html += `<div class="date-total-content">
                     <div class="date-total-actions">
-                        <button class="action-btn save-btn ${isSaved ? 'saved' : ''}" data-date-id="${group.id}">💾 Save</button>
-                        <button class="action-btn edit-btn" data-date-id="${group.id}">✏️ Edit</button>
-                        <button class="action-btn delete-date-btn" data-date-id="${group.id}">🗑️ Delete</button>
+                        ${canEdit ? `
+                            <button class="action-btn save-btn ${isSaved ? 'saved' : ''}" data-date-id="${group.id}">💾 Save</button>
+                            <button class="action-btn edit-btn" data-date-id="${group.id}">✏️ Edit</button>
+                            <button class="action-btn delete-date-btn" data-date-id="${group.id}">🗑️ Delete</button>
+                        ` : ''}
                     </div>
                     <div class="date-total-right">
                         <span class="date-total-label">Date Total Amount:</span>
                         <span class="date-total-amount">${dateTotal.toFixed(2)}</span>
-                        <div class="date-total-add-row">
-                            <button class="add-row-inline-btn" data-date-id="${group.id}">➕ Add Row</button>
-                        </div>
+                        ${canEdit ? `
+                            <div class="date-total-add-row">
+                                <button class="add-row-inline-btn" data-date-id="${group.id}">➕ Add Row</button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>`;
                 html += `</td>`;
@@ -1208,6 +1273,9 @@
             });
         }
 
+        // ========================================
+        // COLUMN TOTALS (Footer)
+        // ========================================
         const colTotals = computeColumnTotals(filtered);
         html += '<tfoot>';
         html += `<tr class="col-total-row">`;
@@ -1226,6 +1294,7 @@
         html += `</tr>`;
 
         html += '</tfoot>';
+        html += '</tbody>';
         html += '</table>';
 
         wrapper.innerHTML = html;
@@ -1322,6 +1391,11 @@
     }
 
     function handleDeleteRow(e) {
+        // Only admin can delete
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can delete rows', 'error');
+            return;
+        }
         const dateId = parseInt(e.target.dataset.dateId);
         const rowId = parseInt(e.target.dataset.rowId);
         if (confirm('Delete this transaction?')) {
@@ -1335,6 +1409,11 @@
     }
 
     function handleDeleteDate(e) {
+        // Only admin can delete
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can delete dates', 'error');
+            return;
+        }
         const dateId = parseInt(e.target.dataset.dateId);
         if (confirm('Delete this entire date entry and all its transactions?')) {
             data = data.filter(d => d.id !== dateId);
@@ -1345,12 +1424,28 @@
         }
     }
 
+    // ========================================
+    // ADD DATE ENTRY WITH DUPLICATE CHECK
+    // ========================================
     function addDateEntry() {
+        // Only admin can add dates
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can add dates', 'error');
+            return;
+        }
+        
         const dateInput = prompt('Enter date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
         if (!dateInput) return;
 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
             alert('Please use YYYY-MM-DD format');
+            return;
+        }
+
+        // Check if date already exists
+        const dateExists = data.some(d => d.date === dateInput);
+        if (dateExists) {
+            alert('❌ This date already exists! Please enter a different date.');
             return;
         }
 
@@ -1360,12 +1455,16 @@
             rows: []
         };
 
+        // Create a row with ALL default columns
         const newRow = createEmptyRow();
         newGroup.rows.push(newRow);
 
         data.push(newGroup);
+        // Sort by date (latest first)
+        data = sortDataByDate(data);
         render();
         scheduleCloudSync();
+        showToast('✅ Date added successfully!', 'success');
     }
 
     function applyDateFilter() {
@@ -1530,6 +1629,7 @@
     // ========================================
     function saveToStorage() {
         try {
+            data = sortDataByDate(data);
             const store = {
                 data,
                 nextDateId,
@@ -1555,7 +1655,7 @@
             if (!raw) return false;
             const store = JSON.parse(raw);
             if (store.data && Array.isArray(store.data)) {
-                data = store.data;
+                data = sortDataByDate(store.data);
                 nextDateId = store.nextDateId || 1;
                 nextRowId = store.nextRowId || 1;
                 nextColId = store.nextColId || 1;
@@ -1600,6 +1700,7 @@
             data = [sampleGroup];
         }
 
+        data = sortDataByDate(data);
         render();
 
         if (SYNC_ENABLED) {
