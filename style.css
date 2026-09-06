@@ -678,7 +678,9 @@ td {
 
 
 /* Column Groups - Smaller */
-
+/* FIX: overflow changed from hidden -> visible so inner input text (esp. AMOUNT)
+   can never be hard-clipped by this container. Height is still used to keep
+   row cards visually uniform, but content is allowed to breathe. */
 .column-group {
     display: flex;
     flex-direction: column;
@@ -688,10 +690,9 @@ td {
     border-radius: var(--radius-sm);
     width: 100%;
     min-height: 140px;
-    height: 140px;
-    max-height: 140px;
+    height: auto;
     transition: background var(--transition);
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
 }
 
@@ -708,6 +709,9 @@ td {
     line-height: 1.1;
 }
 
+/* FIX: explicit line-height added so the browser default (which varies by
+   platform) can no longer make a glyph's ascender taller than the padding
+   budget and get cropped by a parent's overflow rule. */
 .column-group input,
 .column-group textarea {
     width: 100%;
@@ -715,6 +719,7 @@ td {
     border-radius: var(--radius-sm);
     padding: 4px 5px;
     font-size: 0.7rem;
+    line-height: 1.4;
     background: var(--bg-input);
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     color: var(--text-input);
@@ -773,16 +778,19 @@ td {
     flex-shrink: 0;
 }
 
+/* FIX: increased top padding + explicit line-height so "0.00" is vertically
+   centered in the box instead of sitting flush against the top edge. */
 .column-group .amount-input {
     font-weight: 700;
     text-align: right;
-    padding-right: 6px;
+    padding: 5px 6px 4px 5px;
+    line-height: 1.4;
     font-size: 0.75rem;
     background: var(--bg-input);
     border-color: var(--border-color);
     color: var(--accent-teal);
     width: 100%;
-    min-height: 24px;
+    min-height: 26px;
     flex-shrink: 0;
 }
 
@@ -1446,12 +1454,15 @@ td {
     td {
         padding: 4px 4px;
     }
+    /* FIX: fixed-height desktop column-group kept overflow hidden originally;
+       switched to overflow-y: auto so a taller-than-box stack (header + 3
+       inputs + gaps) can no longer silently crop the amount field. */
     .column-group {
         gap: 5px;
         padding: 7px 6px;
         min-height: 178px;
-        height: 178px;
-        max-height: 178px;
+        height: auto;
+        overflow: visible;
     }
     .column-group .field-header {
         font-size: 0.62rem;
@@ -1479,8 +1490,8 @@ td {
     }
     .column-group .amount-input {
         font-size: 0.92rem;
-        padding: 6px 8px;
-        min-height: 31px;
+        padding: 7px 8px 6px;
+        min-height: 33px;
     }
     .desc-display {
         font-size: 0.88rem;
@@ -1859,6 +1870,8 @@ td {
         padding: 4px;
         border-bottom: none;
     }
+    /* FIX: height:auto + overflow:visible ensures the card grows to fit the
+       amount field instead of clipping it against a fixed box. */
     .column-group {
         flex: 1;
         min-width: 0;
@@ -1868,6 +1881,7 @@ td {
         min-height: 110px;
         height: auto;
         max-height: none;
+        overflow: visible;
         width: 100%;
     }
     .column-group .field-header {
@@ -1895,8 +1909,8 @@ td {
     }
     .column-group .amount-input {
         font-size: 0.85rem !important;
-        padding: 5px 7px !important;
-        min-height: 30px !important;
+        padding: 6px 7px 5px !important;
+        min-height: 32px !important;
     }
     .desc-display {
         font-size: 0.8rem !important;
@@ -2125,8 +2139,8 @@ td {
     }
     .column-group .amount-input {
         font-size: 0.75rem !important;
-        padding: 3px 5px !important;
-        min-height: 24px !important;
+        padding: 4px 5px 3px !important;
+        min-height: 26px !important;
     }
     .column-group .field-header {
         font-size: 0.45rem;
