@@ -1,53 +1,53 @@
 // script.js – With Login System, Auto-calculating Totals, Save Button, and Supabase Cloud Sync
 
 (function() {
-        "use strict";
+    "use strict";
 
-        // ========================================
-        // 🔥 SUPABASE CONFIG
-        // ========================================
-        const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
+    // ========================================
+    // 🔥 SUPABASE CONFIG
+    // ========================================
+    const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
 
-        let supabaseClient = null;
-        const SYNC_ENABLED = true;
+    let supabaseClient = null;
+    const SYNC_ENABLED = true;
 
-        // ========================================
-        // INITIALIZE SUPABASE
-        // ========================================
-        function initSupabase() {
-            try {
-                if (typeof supabase !== 'undefined') {
-                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    console.log('✅ Supabase initialized');
-                    return true;
-                } else {
-                    console.log('⏳ Loading Supabase library...');
-                    setTimeout(() => {
-                        if (typeof supabase !== 'undefined') {
-                            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                            console.log('✅ Supabase initialized');
-                        }
-                    }, 1000);
-                    return false;
-                }
-            } catch (e) {
-                console.error('❌ Supabase error:', e);
+    // ========================================
+    // INITIALIZE SUPABASE
+    // ========================================
+    function initSupabase() {
+        try {
+            if (typeof supabase !== 'undefined') {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('✅ Supabase initialized');
+                return true;
+            } else {
+                console.log('⏳ Loading Supabase library...');
+                setTimeout(() => {
+                    if (typeof supabase !== 'undefined') {
+                        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                        console.log('✅ Supabase initialized');
+                    }
+                }, 1000);
                 return false;
             }
+        } catch (e) {
+            console.error('❌ Supabase error:', e);
+            return false;
         }
+    }
 
-        // ========================================
-        // TOAST NOTIFICATIONS
-        // ========================================
-        function showToast(message, type = 'info') {
-            const existing = document.querySelector('.toast-message');
-            if (existing) existing.remove();
+    // ========================================
+    // TOAST NOTIFICATIONS
+    // ========================================
+    function showToast(message, type = 'info') {
+        const existing = document.querySelector('.toast-message');
+        if (existing) existing.remove();
 
-            const toast = document.createElement('div');
-            toast.className = 'toast-message';
-            toast.textContent = message;
-            toast.style.cssText = `
+        const toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.textContent = message;
+        toast.style.cssText = `
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -65,463 +65,461 @@
             max-width: 90%;
             text-align: center;
         `;
-            document.body.appendChild(toast);
+        document.body.appendChild(toast);
 
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // ========================================
+    // SUPABASE SYNC FUNCTIONS
+    // ========================================
+    async function syncToCloud(showToastMsg = true) {
+        if (!SYNC_ENABLED || !supabaseClient) {
+            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
+            return;
         }
 
-        // ========================================
-        // SUPABASE SYNC FUNCTIONS
-        // ========================================
-        async function syncToCloud(showToastMsg = true) {
-            if (!SYNC_ENABLED || !supabaseClient) {
-                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
-                return;
+        try {
+            data = sortDataByDate(data);
+
+            const store = {
+                data: data,
+                nextDateId: nextDateId,
+                nextRowId: nextRowId,
+                nextColId: nextColId,
+                customColumns: customColumns,
+                savedCustomColumns: savedCustomColumns,
+                savedDates: savedDates,
+                editModes: editModes,
+                lastUpdated: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from('expenditure_data')
+                .upsert({
+                    id: 1,
+                    data: store,
+                    updated_by: currentUser ? currentUser.username : 'anonymous',
+                    last_updated: new Date().toISOString()
+                }, { onConflict: 'id' });
+
+            if (error) {
+                console.error('❌ Sync error:', error);
+                if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
+            } else {
+                console.log('✅ Synced to cloud');
+                if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
             }
+        } catch (e) {
+            console.error('❌ Sync error:', e);
+            if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
+        }
+    }
 
-            try {
-                // Sort data before syncing
-                data = sortDataByDate(data);
+    async function syncFromCloud(showToastMsg = true) {
+        if (!SYNC_ENABLED || !supabaseClient) {
+            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
+            return false;
+        }
 
-                const store = {
-                    data: data,
-                    nextDateId: nextDateId,
-                    nextRowId: nextRowId,
-                    nextColId: nextColId,
-                    customColumns: customColumns,
-                    savedCustomColumns: savedCustomColumns,
-                    savedDates: savedDates,
-                    editModes: editModes,
-                    lastUpdated: new Date().toISOString()
-                };
+        try {
+            console.log('📥 Pulling from cloud...');
 
-                const { error } = await supabaseClient
-                    .from('expenditure_data')
-                    .upsert({
-                        id: 1,
-                        data: store,
-                        updated_by: currentUser ? currentUser.username : 'anonymous',
-                        last_updated: new Date().toISOString()
-                    }, { onConflict: 'id' });
+            const { data: result, error } = await supabaseClient
+                .from('expenditure_data')
+                .select('data, updated_by, last_updated')
+                .eq('id', 1)
+                .single();
 
-                if (error) {
-                    console.error('❌ Sync error:', error);
-                    if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
                 } else {
-                    console.log('✅ Synced to cloud');
-                    if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
+                    if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
                 }
-            } catch (e) {
-                console.error('❌ Sync error:', e);
-                if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
-            }
-        }
-
-        async function syncFromCloud(showToastMsg = true) {
-            if (!SYNC_ENABLED || !supabaseClient) {
-                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
                 return false;
             }
 
+            if (result && result.data) {
+                const cloudData = result.data;
+
+                data = cloudData.data || data;
+                nextDateId = cloudData.nextDateId || nextDateId;
+                nextRowId = cloudData.nextRowId || nextRowId;
+                nextColId = cloudData.nextColId || nextColId;
+                customColumns = cloudData.customColumns || customColumns;
+                savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
+                savedDates = cloudData.savedDates || savedDates;
+                editModes = cloudData.editModes || editModes;
+
+                data = sortDataByDate(data);
+
+                saveToStorage();
+
+                console.log('✅ Pulled from cloud');
+
+                render();
+                setTimeout(() => {
+                    updateTotalsOnly();
+                    console.log('✅ Totals updated after cloud sync');
+                }, 100);
+
+                if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
+                return true;
+            }
+        } catch (e) {
+            console.error('❌ Pull error:', e);
+            if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
+        }
+        return false;
+    }
+
+    // ========================================
+    // SORT DATA BY DATE (LATEST FIRST)
+    // ========================================
+    function sortDataByDate(dataArray) {
+        if (!dataArray || dataArray.length === 0) return dataArray;
+        return [...dataArray].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB - dateA;
+        });
+    }
+
+    // ========================================
+    // USER MANAGEMENT
+    // ========================================
+    const USERS_KEY = 'starlink_users';
+
+    const DEFAULT_USERS = [
+        { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
+        { id: 2, username: 'grace', password: 'grace123', role: 'user' }
+    ];
+
+    function getUsers() {
+        const stored = localStorage.getItem(USERS_KEY);
+        if (stored) {
             try {
-                console.log('📥 Pulling from cloud...');
+                const users = JSON.parse(stored);
+                if (users && users.length > 0) return users;
+            } catch (e) {}
+        }
+        localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+        return DEFAULT_USERS;
+    }
 
-                const { data: result, error } = await supabaseClient
-                    .from('expenditure_data')
-                    .select('data, updated_by, last_updated')
-                    .eq('id', 1)
-                    .single();
+    function saveUsers(users) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
 
-                if (error) {
-                    if (error.code === 'PGRST116') {
-                        if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
-                    } else {
-                        if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
-                    }
-                    return false;
-                }
+    function findUser(username) {
+        const users = getUsers();
+        return users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    }
 
-                if (result && result.data) {
-                    const cloudData = result.data;
+    function authenticateUser(username, password) {
+        const user = findUser(username);
+        if (user && user.password === password) return user;
+        return null;
+    }
 
-                    data = cloudData.data || data;
-                    nextDateId = cloudData.nextDateId || nextDateId;
-                    nextRowId = cloudData.nextRowId || nextRowId;
-                    nextColId = cloudData.nextColId || nextColId;
-                    customColumns = cloudData.customColumns || customColumns;
-                    savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
-                    savedDates = cloudData.savedDates || savedDates;
-                    editModes = cloudData.editModes || editModes;
+    function updateUserPassword(userId, newPassword) {
+        const users = getUsers();
+        const index = users.findIndex(u => u.id === userId);
+        if (index === -1) return false;
+        users[index].password = newPassword;
+        saveUsers(users);
+        return true;
+    }
 
-                    // Sort data by date
-                    data = sortDataByDate(data);
+    function addUser(username, password, role = 'user') {
+        const users = getUsers();
+        if (findUser(username)) return false;
+        const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
+        users.push({ id: maxId + 1, username, password, role });
+        saveUsers(users);
+        return true;
+    }
 
-                    saveToStorage();
+    function updateUser(id, username, password, role) {
+        const users = getUsers();
+        const index = users.findIndex(u => u.id === id);
+        if (index === -1) return false;
+        const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
+        if (existing) return false;
+        users[index] = {...users[index], username, password, role };
+        saveUsers(users);
+        return true;
+    }
 
-                    console.log('✅ Pulled from cloud');
+    function deleteUser(id) {
+        const users = getUsers();
+        const filtered = users.filter(u => u.id !== id);
+        if (filtered.length === users.length) return false;
+        saveUsers(filtered);
+        return true;
+    }
 
-                    render();
-                    setTimeout(() => {
-                        updateTotalsOnly();
-                        console.log('✅ Totals updated after cloud sync');
-                    }, 100);
+    // ========================================
+    // DOM REFS - LOGIN
+    // ========================================
+    const loginScreen = document.getElementById('loginScreen');
+    const forgotScreen = document.getElementById('forgotScreen');
+    const changePasswordScreen = document.getElementById('changePasswordScreen');
+    const mainApp = document.getElementById('mainApp');
+    const usernameInput = document.getElementById('usernameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const loginSuccess = document.getElementById('loginSuccess');
+    const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+    const backToLoginBtn = document.getElementById('backToLoginBtn');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
+    const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
+    const changePasswordOld = document.getElementById('changePasswordOld');
+    const changePasswordNew = document.getElementById('changePasswordNew');
+    const changePasswordConfirm = document.getElementById('changePasswordConfirm');
+    const changePasswordError = document.getElementById('changePasswordError');
+    const changePasswordSuccess = document.getElementById('changePasswordSuccess');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userDisplay = document.getElementById('userDisplay');
 
-                    if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
+    const adminPanelBtn = document.getElementById('adminPanelBtn');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminPanelClose = document.getElementById('adminPanelClose');
+    const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
+    const userList = document.getElementById('userList');
+    const addUserBtn = document.getElementById('addUserBtn');
+
+    const userModal = document.getElementById('userModal');
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userModalUsername = document.getElementById('userModalUsername');
+    const userModalPassword = document.getElementById('userModalPassword');
+    const userModalRole = document.getElementById('userModalRole');
+    const userModalError = document.getElementById('userModalError');
+    const userModalSave = document.getElementById('userModalSave');
+    const userModalCancel = document.getElementById('userModalCancel');
+    const userModalClose = document.getElementById('userModalClose');
+
+    const syncNowBtn = document.getElementById('syncNowBtn');
+
+    let editingUserId = null;
+    let currentUser = null;
+
+    // ========================================
+    // LOGIN FUNCTIONS
+    // ========================================
+    function checkLogin() {
+        const savedUser = sessionStorage.getItem('starlink_user');
+        if (savedUser) {
+            try {
+                currentUser = JSON.parse(savedUser);
+                const users = getUsers();
+                const exists = users.find(u => u.id === currentUser.id);
+                if (exists) {
+                    showMainApp();
                     return true;
                 }
-            } catch (e) {
-                console.error('❌ Pull error:', e);
-                if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
-            }
-            return false;
+            } catch (e) {}
         }
+        return false;
+    }
 
-        // ========================================
-        // SORT DATA BY DATE (LATEST FIRST)
-        // ========================================
-        function sortDataByDate(dataArray) {
-            if (!dataArray || dataArray.length === 0) return dataArray;
-            return [...dataArray].sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return dateB - dateA; // Latest first
-            });
-        }
+    function attemptLogin() {
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
 
-        // ========================================
-        // USER MANAGEMENT
-        // ========================================
-        const USERS_KEY = 'starlink_users';
-
-        const DEFAULT_USERS = [
-            { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
-            { id: 2, username: 'grace', password: 'grace123', role: 'user' }
-        ];
-
-        function getUsers() {
-            const stored = localStorage.getItem(USERS_KEY);
-            if (stored) {
-                try {
-                    const users = JSON.parse(stored);
-                    if (users && users.length > 0) return users;
-                } catch (e) {}
-            }
-            localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
-            return DEFAULT_USERS;
-        }
-
-        function saveUsers(users) {
-            localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        }
-
-        function findUser(username) {
-            const users = getUsers();
-            return users.find(u => u.username.toLowerCase() === username.toLowerCase());
-        }
-
-        function authenticateUser(username, password) {
-            const user = findUser(username);
-            if (user && user.password === password) return user;
-            return null;
-        }
-
-        function updateUserPassword(userId, newPassword) {
-            const users = getUsers();
-            const index = users.findIndex(u => u.id === userId);
-            if (index === -1) return false;
-            users[index].password = newPassword;
-            saveUsers(users);
-            return true;
-        }
-
-        function addUser(username, password, role = 'user') {
-            const users = getUsers();
-            if (findUser(username)) return false;
-            const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
-            users.push({ id: maxId + 1, username, password, role });
-            saveUsers(users);
-            return true;
-        }
-
-        function updateUser(id, username, password, role) {
-            const users = getUsers();
-            const index = users.findIndex(u => u.id === id);
-            if (index === -1) return false;
-            const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
-            if (existing) return false;
-            users[index] = {...users[index], username, password, role };
-            saveUsers(users);
-            return true;
-        }
-
-        function deleteUser(id) {
-            const users = getUsers();
-            const filtered = users.filter(u => u.id !== id);
-            if (filtered.length === users.length) return false;
-            saveUsers(filtered);
-            return true;
-        }
-
-        // ========================================
-        // DOM REFS - LOGIN
-        // ========================================
-        const loginScreen = document.getElementById('loginScreen');
-        const forgotScreen = document.getElementById('forgotScreen');
-        const changePasswordScreen = document.getElementById('changePasswordScreen');
-        const mainApp = document.getElementById('mainApp');
-        const usernameInput = document.getElementById('usernameInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const loginBtn = document.getElementById('loginBtn');
-        const loginError = document.getElementById('loginError');
-        const loginSuccess = document.getElementById('loginSuccess');
-        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-        const backToLoginBtn = document.getElementById('backToLoginBtn');
-        const changePasswordBtn = document.getElementById('changePasswordBtn');
-        const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
-        const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
-        const changePasswordOld = document.getElementById('changePasswordOld');
-        const changePasswordNew = document.getElementById('changePasswordNew');
-        const changePasswordConfirm = document.getElementById('changePasswordConfirm');
-        const changePasswordError = document.getElementById('changePasswordError');
-        const changePasswordSuccess = document.getElementById('changePasswordSuccess');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const userDisplay = document.getElementById('userDisplay');
-
-        const adminPanelBtn = document.getElementById('adminPanelBtn');
-        const adminPanel = document.getElementById('adminPanel');
-        const adminPanelClose = document.getElementById('adminPanelClose');
-        const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
-        const userList = document.getElementById('userList');
-        const addUserBtn = document.getElementById('addUserBtn');
-
-        const userModal = document.getElementById('userModal');
-        const userModalTitle = document.getElementById('userModalTitle');
-        const userModalUsername = document.getElementById('userModalUsername');
-        const userModalPassword = document.getElementById('userModalPassword');
-        const userModalRole = document.getElementById('userModalRole');
-        const userModalError = document.getElementById('userModalError');
-        const userModalSave = document.getElementById('userModalSave');
-        const userModalCancel = document.getElementById('userModalCancel');
-        const userModalClose = document.getElementById('userModalClose');
-
-        const syncNowBtn = document.getElementById('syncNowBtn');
-
-        let editingUserId = null;
-        let currentUser = null;
-
-        // ========================================
-        // LOGIN FUNCTIONS
-        // ========================================
-        function checkLogin() {
-            const savedUser = sessionStorage.getItem('starlink_user');
-            if (savedUser) {
-                try {
-                    currentUser = JSON.parse(savedUser);
-                    const users = getUsers();
-                    const exists = users.find(u => u.id === currentUser.id);
-                    if (exists) {
-                        showMainApp();
-                        return true;
-                    }
-                } catch (e) {}
-            }
-            return false;
-        }
-
-        function attemptLogin() {
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
-
-            if (!username || !password) {
-                loginError.textContent = '❌ Please enter both username and password.';
-                loginError.style.display = 'block';
-                loginSuccess.style.display = 'none';
-                return;
-            }
-
-            const user = authenticateUser(username, password);
-            if (user) {
-                loginError.style.display = 'none';
-                loginSuccess.textContent = '✅ Login successful! Redirecting...';
-                loginSuccess.style.display = 'block';
-                currentUser = user;
-                sessionStorage.setItem('starlink_user', JSON.stringify(user));
-                setTimeout(() => {
-                    showMainApp();
-                }, 600);
-            } else {
-                loginSuccess.style.display = 'none';
-                loginError.textContent = '❌ Invalid username or password.';
-                loginError.style.display = 'block';
-                passwordInput.value = '';
-                passwordInput.focus();
-                setTimeout(() => {
-                    loginError.style.display = 'none';
-                }, 3000);
-            }
-        }
-
-        function showMainApp() {
-            loginScreen.style.display = 'none';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            mainApp.style.display = 'block';
-            if (userDisplay) {
-                userDisplay.textContent = '👤 ' + currentUser.username;
-            }
-            if (adminPanelBtn) {
-                adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
-            }
-            if (typeof initMainApp === 'function') {
-                initMainApp();
-            }
-        }
-
-        function logout() {
-            sessionStorage.removeItem('starlink_user');
-            currentUser = null;
-            mainApp.style.display = 'none';
-            loginScreen.style.display = 'flex';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            usernameInput.value = '';
-            passwordInput.value = '';
-            loginError.style.display = 'none';
+        if (!username || !password) {
+            loginError.textContent = '❌ Please enter both username and password.';
+            loginError.style.display = 'block';
             loginSuccess.style.display = 'none';
-            usernameInput.focus();
+            return;
         }
 
-        function showForgotScreen() {
-            loginScreen.style.display = 'none';
-            forgotScreen.style.display = 'flex';
-            changePasswordScreen.style.display = 'none';
-            const forgotUsername = document.getElementById('forgotUsername');
-            if (forgotUsername) forgotUsername.focus();
+        const user = authenticateUser(username, password);
+        if (user) {
+            loginError.style.display = 'none';
+            loginSuccess.textContent = '✅ Login successful! Redirecting...';
+            loginSuccess.style.display = 'block';
+            currentUser = user;
+            sessionStorage.setItem('starlink_user', JSON.stringify(user));
+            setTimeout(() => {
+                showMainApp();
+            }, 600);
+        } else {
+            loginSuccess.style.display = 'none';
+            loginError.textContent = '❌ Invalid username or password.';
+            loginError.style.display = 'block';
+            passwordInput.value = '';
+            passwordInput.focus();
+            setTimeout(() => {
+                loginError.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    function showMainApp() {
+        loginScreen.style.display = 'none';
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        if (userDisplay) {
+            userDisplay.textContent = '👤 ' + currentUser.username;
+        }
+        if (adminPanelBtn) {
+            adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+        }
+        if (typeof initMainApp === 'function') {
+            initMainApp();
+        }
+    }
+
+    function logout() {
+        sessionStorage.removeItem('starlink_user');
+        currentUser = null;
+        mainApp.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'none';
+        usernameInput.value = '';
+        passwordInput.value = '';
+        loginError.style.display = 'none';
+        loginSuccess.style.display = 'none';
+        usernameInput.focus();
+    }
+
+    function showForgotScreen() {
+        loginScreen.style.display = 'none';
+        forgotScreen.style.display = 'flex';
+        changePasswordScreen.style.display = 'none';
+        const forgotUsername = document.getElementById('forgotUsername');
+        if (forgotUsername) forgotUsername.focus();
+    }
+
+    function showChangePasswordScreen() {
+        loginScreen.style.display = 'none';
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'flex';
+        changePasswordOld.value = '';
+        changePasswordNew.value = '';
+        changePasswordConfirm.value = '';
+        changePasswordError.style.display = 'none';
+        changePasswordSuccess.style.display = 'none';
+        changePasswordOld.focus();
+    }
+
+    function showLoginScreen() {
+        forgotScreen.style.display = 'none';
+        changePasswordScreen.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        usernameInput.focus();
+    }
+
+    function handleChangePassword() {
+        const oldPassword = changePasswordOld.value.trim();
+        const newPassword = changePasswordNew.value.trim();
+        const confirmPassword = changePasswordConfirm.value.trim();
+
+        changePasswordError.style.display = 'none';
+        changePasswordSuccess.style.display = 'none';
+
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            changePasswordError.textContent = '❌ Please fill in all fields.';
+            changePasswordError.style.display = 'block';
+            return;
         }
 
-        function showChangePasswordScreen() {
-            loginScreen.style.display = 'none';
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'flex';
-            changePasswordOld.value = '';
-            changePasswordNew.value = '';
-            changePasswordConfirm.value = '';
-            changePasswordError.style.display = 'none';
-            changePasswordSuccess.style.display = 'none';
-            changePasswordOld.focus();
+        if (oldPassword !== currentUser.password) {
+            changePasswordError.textContent = '❌ Old password is incorrect.';
+            changePasswordError.style.display = 'block';
+            return;
         }
 
-        function showLoginScreen() {
-            forgotScreen.style.display = 'none';
-            changePasswordScreen.style.display = 'none';
-            loginScreen.style.display = 'flex';
-            usernameInput.focus();
+        if (newPassword !== confirmPassword) {
+            changePasswordError.textContent = '❌ New passwords do not match.';
+            changePasswordError.style.display = 'block';
+            return;
         }
 
-        function handleChangePassword() {
-            const oldPassword = changePasswordOld.value.trim();
-            const newPassword = changePasswordNew.value.trim();
-            const confirmPassword = changePasswordConfirm.value.trim();
+        if (newPassword.length < 4) {
+            changePasswordError.textContent = '❌ New password must be at least 4 characters.';
+            changePasswordError.style.display = 'block';
+            return;
+        }
 
-            changePasswordError.style.display = 'none';
-            changePasswordSuccess.style.display = 'none';
+        if (updateUserPassword(currentUser.id, newPassword)) {
+            currentUser.password = newPassword;
+            sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
+            changePasswordSuccess.textContent = '✅ Password changed successfully!';
+            changePasswordSuccess.style.display = 'block';
+            setTimeout(() => {
+                showLoginScreen();
+            }, 2000);
+        } else {
+            changePasswordError.textContent = '❌ Failed to update password.';
+            changePasswordError.style.display = 'block';
+        }
+    }
 
-            if (!oldPassword || !newPassword || !confirmPassword) {
-                changePasswordError.textContent = '❌ Please fill in all fields.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
+    function handleForgotPassword() {
+        const forgotUsername = document.getElementById('forgotUsername');
+        const forgotError = document.getElementById('forgotError');
+        const forgotSuccess = document.getElementById('forgotSuccess');
 
-            if (oldPassword !== currentUser.password) {
-                changePasswordError.textContent = '❌ Old password is incorrect.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
+        if (!forgotUsername) return;
 
-            if (newPassword !== confirmPassword) {
-                changePasswordError.textContent = '❌ New passwords do not match.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
+        const username = forgotUsername.value.trim();
+        forgotError.style.display = 'none';
+        forgotSuccess.style.display = 'none';
 
-            if (newPassword.length < 4) {
-                changePasswordError.textContent = '❌ New password must be at least 4 characters.';
-                changePasswordError.style.display = 'block';
-                return;
-            }
+        if (!username) {
+            forgotError.textContent = '❌ Please enter your username.';
+            forgotError.style.display = 'block';
+            return;
+        }
 
-            if (updateUserPassword(currentUser.id, newPassword)) {
-                currentUser.password = newPassword;
-                sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
-                changePasswordSuccess.textContent = '✅ Password changed successfully!';
-                changePasswordSuccess.style.display = 'block';
-                setTimeout(() => {
-                    showLoginScreen();
-                }, 2000);
+        const user = findUser(username);
+        if (user) {
+            if (currentUser && currentUser.role === 'admin') {
+                forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
             } else {
-                changePasswordError.textContent = '❌ Failed to update password.';
-                changePasswordError.style.display = 'block';
+                forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
             }
+            forgotSuccess.style.display = 'block';
+            setTimeout(() => {
+                showLoginScreen();
+            }, 3000);
+        } else {
+            forgotError.textContent = '❌ Username not found.';
+            forgotError.style.display = 'block';
+            setTimeout(() => {
+                forgotError.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    // ========================================
+    // ADMIN PANEL
+    // ========================================
+    function renderUserList() {
+        const users = getUsers();
+        if (!userList) return;
+
+        if (users.length === 0) {
+            userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
+            return;
         }
 
-        function handleForgotPassword() {
-            const forgotUsername = document.getElementById('forgotUsername');
-            const forgotError = document.getElementById('forgotError');
-            const forgotSuccess = document.getElementById('forgotSuccess');
-
-            if (!forgotUsername) return;
-
-            const username = forgotUsername.value.trim();
-            forgotError.style.display = 'none';
-            forgotSuccess.style.display = 'none';
-
-            if (!username) {
-                forgotError.textContent = '❌ Please enter your username.';
-                forgotError.style.display = 'block';
-                return;
-            }
-
-            const user = findUser(username);
-            if (user) {
-                if (currentUser && currentUser.role === 'admin') {
-                    forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
-                } else {
-                    forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
-                }
-                forgotSuccess.style.display = 'block';
-                setTimeout(() => {
-                    showLoginScreen();
-                }, 3000);
-            } else {
-                forgotError.textContent = '❌ Username not found.';
-                forgotError.style.display = 'block';
-                setTimeout(() => {
-                    forgotError.style.display = 'none';
-                }, 3000);
-            }
-        }
-
-        // ========================================
-        // ADMIN PANEL
-        // ========================================
-        function renderUserList() {
-            const users = getUsers();
-            if (!userList) return;
-
-            if (users.length === 0) {
-                userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
-                return;
-            }
-
-            let html = '';
-            users.forEach(user => {
-                        const isCurrent = currentUser && currentUser.id === user.id;
-                        const isAdmin = currentUser && currentUser.role === 'admin';
-                        html += `
+        let html = '';
+        users.forEach(user => {
+            const isCurrent = currentUser && currentUser.id === user.id;
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            html += `
                 <div class="user-item ${isCurrent ? 'current-user' : ''}">
                     <div class="user-info">
                         <span class="user-icon">${user.role === 'admin' ? '👑' : '👤'}</span>
@@ -546,7 +544,6 @@
 
         userList.innerHTML = html;
 
-        // Only admins can edit/delete users
         if (currentUser && currentUser.role === 'admin') {
             document.querySelectorAll('.btn-edit-user').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -796,7 +793,6 @@
                 return d.date <= dateTo;
             });
         }
-        // Sort by date (latest first)
         return sortDataByDate(filtered);
     }
 
@@ -959,7 +955,6 @@
     }
 
     function editDateEntry(dateId) {
-        // Only admin can edit
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can edit records', 'error');
             return;
@@ -973,7 +968,7 @@
 
     function openReadMoreModal(text) {
         if (!modal) return;
-        modalBody.innerHTML = `<p class="modal-text">${text}</p>`;
+        modalBody.innerHTML = `<p class="modal-text" style="white-space:pre-wrap; word-wrap:break-word; line-height:1.8;">${text}</p>`;
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
     }
@@ -985,7 +980,6 @@
     }
 
     function addTransactionRow(dateId) {
-        // Only admin can add rows
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can add rows', 'error');
             return;
@@ -1003,7 +997,7 @@
     }
 
     // ========================================
-    // DEBOUNCED SAVE (Auto-save for amounts)
+    // DEBOUNCED SAVE
     // ========================================
     let saveTimeout = null;
 
@@ -1018,7 +1012,6 @@
     // HANDLE INPUT CHANGE
     // ========================================
     function handleInputChange(e) {
-        // Only admin can edit
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can edit records', 'error');
             return;
@@ -1039,7 +1032,6 @@
         updateTotalsOnly();
         debouncedSave();
         
-        // Auto-sync to cloud for amount changes
         if (key.includes('_amount')) {
             scheduleCloudSync();
         }
@@ -1112,7 +1104,7 @@
     }
 
     // ========================================
-    // RENDER - FIXED: Column headers repeat for each date
+    // RENDER - FIXED WITH CLICKABLE DESCRIPTIONS
     // ========================================
     function render() {
         const filtered = getFilteredData();
@@ -1120,8 +1112,6 @@
         const canEdit = userCanEdit();
 
         let html = '<table>';
-
-        // REMOVED: Global thead - headers will now be inside each date group
 
         html += '<tbody>';
 
@@ -1137,9 +1127,7 @@
                 const isEditing = editModes[group.id] || false;
                 const showEditMode = isEditing || !isSaved;
 
-                // ========================================
                 // DATE HEADER ROW
-                // ========================================
                 html += `<tr class="date-header-row">`;
                 html += `<td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
                 html += `<div class="date-label">
@@ -1149,9 +1137,7 @@
                 html += `</td>`;
                 html += `</tr>`;
 
-                // ========================================
                 // COLUMN HEADERS - REPEAT FOR EACH DATE
-                // ========================================
                 html += `<tr class="date-column-header">`;
                 html += `<td style="min-width:80px; font-weight:700; color:var(--accent-brass); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--table-header);">COLUMNS</td>`;
                 allColumns.forEach(col => {
@@ -1166,9 +1152,7 @@
                 html += `<td style="min-width:40px; background:var(--table-header);"></td>`;
                 html += `</tr>`;
 
-                // ========================================
                 // DATA ROWS
-                // ========================================
                 if (group.rows.length === 0) {
                     html += `<tr><td colspan="${allColumns.length + 3}" style="text-align:center; padding:16px; color:var(--text-dim); background:var(--bg-card);">
                         No transactions — click "Add Row" to add
@@ -1196,10 +1180,10 @@
                             let descDisplay = '';
                             if (showEditMode && canEdit) {
                                 descDisplay = `
-                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${descVal}</textarea>
+                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="2">${descVal}</textarea>
                                 `;
                             } else {
-                                const truncated = truncateText(descVal, 3);
+                                const truncated = truncateText(descVal, 4);
                                 if (truncated.needsReadMore) {
                                     descDisplay = `
                                         <div class="desc-display" data-full-text="${descVal.replace(/"/g, '&quot;')}">
@@ -1216,14 +1200,35 @@
                                 }
                             }
 
+                            let transDisplay = '';
+                            if (showEditMode && canEdit) {
+                                transDisplay = `
+                                    <textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="2">${transVal}</textarea>
+                                `;
+                            } else {
+                                const truncated = truncateText(transVal, 4);
+                                if (truncated.needsReadMore) {
+                                    transDisplay = `
+                                        <div class="desc-display" data-full-text="${transVal.replace(/"/g, '&quot;')}" data-type="transaction">
+                                            <span class="short-text">${truncated.short}</span>
+                                            <button class="read-more-btn" data-full-text="${transVal.replace(/"/g, '&quot;')}">readmore</button>
+                                        </div>
+                                    `;
+                                } else {
+                                    transDisplay = `
+                                        <div class="desc-display" data-full-text="${transVal.replace(/"/g, '&quot;')}" data-type="transaction">
+                                            ${transVal || '-'}
+                                        </div>
+                                    `;
+                                }
+                            }
+
                             html += `<td style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${col.label}">
                                 <div class="column-group ${isCustom ? 'custom-column' : ''}">
                                     <span class="field-header">Description</span>
                                     ${descDisplay}
                                     <span class="field-header">Transaction Reference</span>
-                                    ${showEditMode && canEdit ? 
-                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1">${transVal}</textarea>` : 
-                                        `<div class="desc-display">${transVal || '-'}</div>`}
+                                    ${transDisplay}
                                     <span class="field-header">Amount</span>
                                     ${showEditMode && canEdit ? 
                                         `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
@@ -1243,9 +1248,7 @@
                     });
                 }
 
-                // ========================================
                 // DATE TOTAL ROW
-                // ========================================
                 const dateTotal = getDateGroupTotal(group);
                 html += `<tr class="date-total-row">`;
                 html += `<td colspan="${allColumns.length + 2}" style="padding:8px 16px;" data-label="">`;
@@ -1273,9 +1276,7 @@
             });
         }
 
-        // ========================================
         // COLUMN TOTALS (Footer)
-        // ========================================
         const colTotals = computeColumnTotals(filtered);
         html += '<tfoot>';
         html += `<tr class="col-total-row">`;
@@ -1302,6 +1303,10 @@
         const grandTotal = computeGrandTotal(filtered);
         grandTotalEl.textContent = grandTotal.toFixed(2);
 
+        // ========================================
+        // EVENT LISTENERS - FIXED WITH CLICKABLE DESCRIPTIONS
+        // ========================================
+        
         document.querySelectorAll('.desc-input, .trans-input, .amount-input').forEach(input => {
             input.addEventListener('input', handleInputChange);
         });
@@ -1317,6 +1322,7 @@
             }, 10);
         });
 
+        // Read More button click
         document.querySelectorAll('.read-more-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -1327,11 +1333,19 @@
             });
         });
 
+        // Click on any desc-display to view full content (for both Description and Transaction Reference)
         document.querySelectorAll('.desc-display').forEach(el => {
             el.addEventListener('click', function() {
                 const fullText = this.dataset.fullText || '';
-                if (fullText && fullText !== '-') {
-                    openReadMoreModal(fullText);
+                let text = fullText;
+                // If no data-full-text, use the text content
+                if (!text || text === '-' || text === '') {
+                    text = this.textContent.trim();
+                }
+                // Remove "readmore" button text if present
+                text = text.replace(/readmore$/, '').trim();
+                if (text && text !== '-') {
+                    openReadMoreModal(text);
                 }
             });
         });
@@ -1391,7 +1405,6 @@
     }
 
     function handleDeleteRow(e) {
-        // Only admin can delete
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can delete rows', 'error');
             return;
@@ -1409,7 +1422,6 @@
     }
 
     function handleDeleteDate(e) {
-        // Only admin can delete
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can delete dates', 'error');
             return;
@@ -1428,7 +1440,6 @@
     // ADD DATE ENTRY WITH DUPLICATE CHECK
     // ========================================
     function addDateEntry() {
-        // Only admin can add dates
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can add dates', 'error');
             return;
@@ -1442,7 +1453,6 @@
             return;
         }
 
-        // Check if date already exists
         const dateExists = data.some(d => d.date === dateInput);
         if (dateExists) {
             alert('❌ This date already exists! Please enter a different date.');
@@ -1455,12 +1465,10 @@
             rows: []
         };
 
-        // Create a row with ALL default columns
         const newRow = createEmptyRow();
         newGroup.rows.push(newRow);
 
         data.push(newGroup);
-        // Sort by date (latest first)
         data = sortDataByDate(data);
         render();
         scheduleCloudSync();
