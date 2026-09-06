@@ -1,4 +1,4 @@
-/* style.css – Navy blue theme with brass and teal accents */
+/* style.css – Professional Navy Blue Theme with Brass & Teal Accents */
 
 * {
     margin: 0;
@@ -6,6 +6,15 @@
     box-sizing: border-box;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
+
+
+/* ======================================== */
+
+
+/* CSS VARIABLES - DARK MODE */
+
+
+/* ======================================== */
 
 :root {
     --bg-primary: #0a0e1a;
@@ -38,7 +47,20 @@
     --total-row-bg: linear-gradient(135deg, #0a1a3a 0%, #0a2a4a 100%);
     --desc-bg: rgba(255, 255, 255, 0.02);
     --desc-border: rgba(255, 255, 255, 0.04);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --radius-lg: 18px;
+    --transition: 0.3s ease;
 }
+
+
+/* ======================================== */
+
+
+/* LIGHT MODE VARIABLES */
+
+
+/* ======================================== */
 
 body.light-mode {
     --bg-primary: #e8edf5;
@@ -73,15 +95,38 @@ body.light-mode {
     --desc-border: rgba(0, 0, 0, 0.06);
 }
 
+
+/* ======================================== */
+
+
+/* BODY & SCROLLBAR */
+
+
+/* ======================================== */
+
 body {
     background: var(--bg-primary);
     min-height: 100vh;
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding: 10px;
     background-image: var(--login-bg);
-    transition: background 0.3s ease, color 0.3s ease;
+    transition: background var(--transition), color var(--transition);
+}
+
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-teal);
+    border-radius: 10px;
 }
 
 
@@ -104,71 +149,60 @@ body {
     justify-content: center;
     background: var(--login-bg);
     z-index: 9999;
-    padding: 20px;
-    transition: background 0.3s ease;
+    padding: 16px;
+    transition: background var(--transition);
 }
 
 .login-container {
-    max-width: 420px;
+    max-width: 400px;
     width: 100%;
     background: var(--bg-secondary);
-    border-radius: 28px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px -12px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     padding: 0;
     border: 1px solid var(--border-color);
     overflow: hidden;
-    transition: background 0.3s ease, border-color 0.3s ease;
+    transition: background var(--transition), border-color var(--transition);
 }
 
 .login-header {
     background: var(--table-header);
-    padding: 30px 30px 20px;
+    padding: 30px 24px 20px;
     text-align: center;
     border-bottom: 2px solid var(--border-color);
-    transition: background 0.3s ease;
+    transition: background var(--transition);
 }
 
 .login-icon {
     font-size: 2.8rem;
+    display: block;
+    margin-bottom: 4px;
 }
 
 .login-header h1 {
     font-weight: 800;
-    font-size: 2.2rem;
+    font-size: 2rem;
     color: var(--text-primary);
     letter-spacing: -0.02em;
 }
 
 .login-header p {
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     margin-top: 4px;
 }
 
-.login-sub {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 3px 18px;
-    background: rgba(200, 154, 91, 0.15);
-    color: var(--accent-brass);
-    border-radius: 40px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    border: 1px solid rgba(200, 154, 91, 0.15);
-}
-
 .login-body {
-    padding: 30px 30px 20px;
+    padding: 24px 24px 16px;
 }
 
 .login-error {
     background: var(--accent-red-bg);
     color: var(--accent-red);
     padding: 10px 14px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     font-size: 0.85rem;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     border: 1px solid rgba(226, 104, 91, 0.15);
 }
 
@@ -176,22 +210,22 @@ body {
     background: rgba(111, 203, 147, 0.15);
     color: var(--accent-green);
     padding: 10px 14px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     font-size: 0.85rem;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     border: 1px solid rgba(111, 203, 147, 0.15);
 }
 
 .login-input-group {
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 }
 
 .login-input-group label {
     display: block;
     font-weight: 600;
     color: var(--text-muted);
-    font-size: 0.8rem;
-    margin-bottom: 6px;
+    font-size: 0.7rem;
+    margin-bottom: 5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -199,13 +233,13 @@ body {
 .login-input {
     width: 100%;
     padding: 12px 16px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
     background: var(--bg-input);
     color: var(--text-primary);
     font-size: 1rem;
     outline: none;
-    transition: 0.2s;
+    transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 .login-input:focus {
@@ -221,14 +255,14 @@ body {
 .login-btn {
     width: 100%;
     padding: 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     border: none;
     background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
     color: var(--accent-teal-light);
     font-size: 1rem;
     font-weight: 700;
     cursor: pointer;
-    transition: 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
     border: 1px solid rgba(95, 199, 188, 0.2);
 }
 
@@ -239,33 +273,43 @@ body {
 
 .login-links {
     text-align: center;
-    margin-top: 16px;
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.forgot-link {
+.login-links .forgot-link {
     background: none;
     border: none;
     color: var(--accent-teal);
     font-size: 0.85rem;
     cursor: pointer;
-    transition: 0.2s;
-    text-decoration: underline;
+    transition: color var(--transition);
     padding: 4px 8px;
 }
 
-.forgot-link:hover {
+.login-links .forgot-link:hover {
     color: var(--accent-teal-light);
+    text-decoration: underline;
+}
+
+.login-links span {
+    color: var(--text-dim);
+    font-size: 0.8rem;
 }
 
 .login-footer {
-    padding: 16px 30px;
+    padding: 14px 24px;
     text-align: center;
     border-top: 1px solid var(--border-color);
 }
 
 .login-footer span {
     color: var(--text-dim);
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     letter-spacing: 0.5px;
 }
 
@@ -282,180 +326,200 @@ body {
     max-width: 1550px;
     width: 100%;
     background: var(--bg-secondary);
-    border-radius: 28px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px -12px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    padding: 28px 32px 36px;
+    padding: 16px 18px 24px;
     border: 1px solid var(--border-color);
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
+
+
+/* Header */
 
 .app-header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
-    gap: 16px;
-    border-bottom: 2px solid var(--border-color);
-    padding-bottom: 20px;
+    gap: 12px;
     background: var(--bg-tertiary);
-    padding: 18px 22px;
-    border-radius: 16px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
     border: 1px solid var(--border-color);
-    transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-
-/* Change Password link on login */
-
-.login-links {
-    text-align: center;
-    margin-top: 16px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-}
-
-.login-links .forgot-link {
-    background: none;
-    border: none;
-    color: var(--accent-teal);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: 0.2s;
-    text-decoration: underline;
-    padding: 4px 8px;
-}
-
-.login-links .forgot-link:hover {
-    color: var(--accent-teal-light);
-}
-
-.login-links span {
-    color: var(--text-dim);
-    font-size: 0.8rem;
+    margin-bottom: 14px;
+    transition: background var(--transition), border-color var(--transition);
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .header-left h1 {
     font-weight: 800;
-    font-size: 2rem;
+    font-size: 1.6rem;
     color: var(--text-primary);
     letter-spacing: -0.02em;
-    text-shadow: 0 0 30px rgba(200, 154, 91, 0.18);
-    transition: color 0.3s ease;
+    text-shadow: 0 0 30px rgba(200, 154, 91, 0.15);
+    transition: color var(--transition);
 }
 
 .subtitle {
     font-weight: 600;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.65rem;
     background: var(--bg-input);
-    padding: 5px 18px;
+    padding: 3px 12px;
     border-radius: 40px;
     letter-spacing: 0.5px;
     border: 1px solid var(--border-color);
-    transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
 }
 
 .user-badge {
     font-weight: 600;
     color: var(--accent-teal-light);
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     background: rgba(79, 182, 168, 0.12);
-    padding: 4px 16px;
+    padding: 3px 10px;
     border-radius: 40px;
     border: 1px solid rgba(79, 182, 168, 0.15);
+}
+
+
+/* Buttons */
+
+.btn {
+    border: none;
+    padding: 5px 12px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    box-shadow: 0 2px 8px var(--shadow-light);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+}
+
+.btn:hover {
+    transform: scale(0.97);
 }
 
 .btn-theme {
     background: var(--bg-input);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    padding: 6px 16px;
-    font-size: 0.75rem;
-    border-radius: 30px;
-    cursor: pointer;
-    transition: 0.2s;
+    padding: 4px 12px;
+    font-size: 0.65rem;
 }
 
 .btn-theme:hover {
     background: var(--bg-input-focus);
-    transform: scale(0.97);
 }
 
 .btn-admin {
     background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
     color: var(--accent-teal-light);
     border: 1px solid rgba(95, 199, 188, 0.2);
-    padding: 6px 16px;
-    font-size: 0.7rem;
-    border-radius: 30px;
-    cursor: pointer;
-    transition: 0.2s;
 }
 
 .btn-admin:hover {
-    transform: scale(0.97);
     box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
-}
-
-.btn-password {
-    background: linear-gradient(135deg, #2a3a6a 0%, #1a2a5a 100%);
-    color: #7a9aff;
-    border: 1px solid rgba(122, 154, 255, 0.15);
-    padding: 6px 16px;
-    font-size: 0.7rem;
-    border-radius: 30px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.btn-password:hover {
-    transform: scale(0.97);
-    box-shadow: 0 4px 12px rgba(122, 154, 255, 0.14);
 }
 
 .btn-logout {
     background: linear-gradient(135deg, #5c1a1a 0%, #3d0a0a 100%);
     color: var(--accent-red);
     border: 1px solid rgba(226, 104, 91, 0.2);
-    padding: 6px 16px;
-    font-size: 0.7rem;
-    border-radius: 30px;
-    cursor: pointer;
-    transition: 0.2s;
 }
 
 .btn-logout:hover {
-    transform: scale(0.97);
     box-shadow: 0 4px 12px rgba(226, 104, 91, 0.14);
 }
+
+.btn-sync {
+    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
+    color: var(--accent-teal-light);
+    border: 1px solid rgba(95, 199, 188, 0.2);
+}
+
+.btn-sync:hover {
+    box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
+}
+
+.btn-filter {
+    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
+    color: var(--accent-teal-light);
+    border: 1px solid rgba(95, 199, 188, 0.2);
+    padding: 4px 10px;
+    font-size: 0.6rem;
+}
+
+.btn-filter:hover {
+    box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
+}
+
+.btn-pdf {
+    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
+    color: var(--accent-brass);
+    border: 1px solid rgba(200, 154, 91, 0.2);
+    padding: 4px 12px;
+    font-size: 0.65rem;
+}
+
+.btn-pdf:hover {
+    box-shadow: 0 4px 12px rgba(200, 154, 91, 0.14);
+}
+
+.btn-add {
+    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
+    color: var(--accent-brass);
+    padding: 8px 18px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(200, 154, 91, 0.2);
+}
+
+.btn-add:hover {
+    box-shadow: 0 4px 12px rgba(200, 154, 91, 0.14);
+}
+
+.btn-add-secondary {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    padding: 8px 18px;
+    font-size: 0.8rem;
+}
+
+.btn-add-secondary:hover {
+    background: var(--bg-input-focus);
+}
+
+
+/* Filter Panel */
 
 .filter-panel {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 12px;
+    gap: 5px 8px;
     background: var(--bg-input);
-    padding: 8px 16px 8px 18px;
+    padding: 5px 10px 5px 12px;
     border-radius: 60px;
     border: 1px solid var(--border-color);
-    transition: background 0.3s ease, border-color 0.3s ease;
+    transition: background var(--transition), border-color var(--transition);
 }
 
 .filter-panel label {
     font-weight: 600;
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -463,19 +527,20 @@ body {
 .date-input {
     border: 1px solid var(--border-light);
     border-radius: 30px;
-    padding: 6px 12px;
+    padding: 4px 8px;
     font-weight: 500;
     background: var(--bg-input);
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--text-primary);
     outline: none;
-    transition: 0.2s;
-    max-width: 140px;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    max-width: 120px;
+    min-height: 28px;
 }
 
 .date-input:focus {
     border-color: var(--accent-teal);
-    box-shadow: 0 0 0 4px rgba(79, 182, 168, 0.12);
+    box-shadow: 0 0 0 3px rgba(79, 182, 168, 0.12);
     background: var(--bg-input-focus);
 }
 
@@ -487,85 +552,23 @@ body.light-mode .date-input::-webkit-calendar-picker-indicator {
     filter: invert(0.2);
 }
 
-.btn {
-    border: none;
-    background: var(--bg-input);
-    padding: 6px 16px;
-    border-radius: 40px;
-    font-weight: 600;
-    font-size: 0.75rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    transition: 0.2s;
-    box-shadow: 0 2px 8px var(--shadow-light);
-    color: var(--text-primary);
+
+/* Table Container */
+
+.table-container {
+    margin: 10px 0 8px;
+    border-radius: var(--radius);
     border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    overflow: hidden;
+    box-shadow: 0 4px 16px var(--shadow-light);
+    transition: background var(--transition), border-color var(--transition);
 }
 
-.btn-filter {
-    background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
-    color: var(--accent-teal-light);
-    border: 1px solid rgba(95, 199, 188, 0.2);
-    padding: 6px 14px;
-    font-size: 0.7rem;
-}
-
-.btn-filter:hover {
-    transform: scale(0.97);
-    box-shadow: 0 4px 12px rgba(79, 182, 168, 0.14);
-}
-
-.btn-filter-outline {
-    background: var(--bg-input);
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-}
-
-.btn-filter-outline:hover {
-    background: var(--bg-input-focus);
-}
-
-.btn-pdf {
-    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
-    color: var(--accent-brass);
-    padding: 6px 18px;
-    font-size: 0.75rem;
-    border: 1px solid rgba(200, 154, 91, 0.2);
-}
-
-.btn-pdf:hover {
-    transform: scale(0.97);
-    box-shadow: 0 4px 12px rgba(200, 154, 91, 0.14);
-    border-color: rgba(200, 154, 91, 0.35);
-}
-
-.btn-add {
-    background: linear-gradient(135deg, #0a1a3a 0%, #1a2a4a 100%);
-    color: var(--accent-brass);
-    padding: 12px 28px;
-    font-size: 0.95rem;
-    border: 1px solid rgba(200, 154, 91, 0.2);
-}
-
-.btn-add:hover {
-    transform: scale(0.98);
-    box-shadow: 0 4px 12px rgba(200, 154, 91, 0.14);
-    border-color: rgba(200, 154, 91, 0.35);
-}
-
-.btn-add-secondary {
-    background: var(--bg-input);
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-    padding: 12px 28px;
-    font-size: 0.95rem;
-}
-
-.btn-add-secondary:hover {
-    background: var(--bg-input-focus);
-    transform: scale(0.98);
+.table-responsive {
+    overflow-x: auto;
+    padding: 4px 0;
+    -webkit-overflow-scrolling: touch;
 }
 
 
@@ -577,121 +580,154 @@ body.light-mode .date-input::-webkit-calendar-picker-indicator {
 
 /* ======================================== */
 
-.table-container {
-    margin: 16px 0 14px;
-    border-radius: 18px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-card);
-    overflow: hidden;
-    box-shadow: 0 4px 16px var(--shadow-light);
-    transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-.table-responsive {
-    overflow-x: auto;
-    padding: 6px 0;
-    -webkit-overflow-scrolling: touch;
-}
-
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
-    min-width: 1300px;
+    font-size: 0.8rem;
+    min-width: 1100px;
     color: var(--text-secondary);
-    transition: color 0.3s ease;
+    transition: color var(--transition);
+    table-layout: fixed;
 }
 
-th {
+
+/* Headers - Compact */
+
+th,
+.date-column-header td {
     background: var(--table-header);
     color: var(--accent-brass);
     font-weight: 700;
-    padding: 14px 8px;
+    padding: 6px 4px;
     text-align: center;
     border: 1px solid var(--border-color);
-    white-space: nowrap;
-    font-size: 0.72rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     vertical-align: middle;
-    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
+
+
+/* Date header */
+
+.date-header-row td {
+    background: var(--table-header);
+    padding: 6px 12px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    border-top: 2px solid rgba(200, 154, 91, 0.12);
+}
+
+.date-header-row td:first-child {
+    background: var(--table-header);
+}
+
+.date-header-row .date-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.date-header-row .date-badge {
+    background: var(--table-header);
+    color: var(--accent-brass);
+    padding: 2px 14px;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(200, 154, 91, 0.2);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.date-header-row .add-col-btn-header {
+    background: none;
+    border: 2px dashed rgba(200, 154, 91, 0.18);
+    border-radius: 30px;
+    padding: 2px 10px;
+    color: var(--accent-brass);
+    cursor: pointer;
+    font-size: 0.6rem;
+    font-weight: 700;
+    transition: background 0.2s, border-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    min-height: 24px;
+    margin-left: auto;
+}
+
+.date-header-row .add-col-btn-header:hover {
+    background: var(--bg-hover);
+    border-color: rgba(200, 154, 91, 0.28);
+}
+
+
+/* Table Cells - Compact */
 
 td {
-    padding: 4px 4px;
+    padding: 2px 2px;
     border: 1px solid var(--border-color);
-    vertical-align: middle;
+    vertical-align: top;
     background: var(--table-row);
-    transition: background 0.3s ease, border-color 0.3s ease;
+    transition: background var(--transition), border-color var(--transition);
 }
 
 
-/* Column group */
+/* Column Groups - Smaller */
 
 .column-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px 6px;
+    gap: 2px;
+    padding: 3px 3px;
     background: var(--bg-input);
-    border-radius: 6px;
-    min-width: 120px;
-    transition: background 0.3s ease;
+    border-radius: var(--radius-sm);
+    width: 100%;
+    min-height: 140px;
+    height: 140px;
+    max-height: 140px;
+    transition: background var(--transition);
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .column-group .field-header {
-    font-size: 0.6rem;
+    font-size: 0.5rem;
     font-weight: 700;
     color: var(--accent-teal);
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    padding: 0 3px;
-    margin-top: 2px;
-    transition: color 0.3s ease;
-}
-
-
-/* Editable column name input */
-
-.column-group .col-name-input {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--accent-brass);
-    background: transparent;
-    border: 1px dashed var(--border-color);
-    border-radius: 6px;
-    padding: 2px 6px;
-    width: 100%;
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: 0.2s;
-}
-
-.column-group .col-name-input:focus {
-    border-color: var(--accent-teal);
-    background: var(--bg-input-focus);
-    outline: none;
-    color: var(--text-primary);
+    letter-spacing: 0.6px;
+    padding: 0 2px;
+    margin-top: 1px;
+    transition: color var(--transition);
+    flex-shrink: 0;
+    line-height: 1.1;
 }
 
 .column-group input,
 .column-group textarea {
     width: 100%;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+    padding: 4px 5px;
+    font-size: 0.7rem;
     background: var(--bg-input);
-    transition: 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     color: var(--text-input);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: inherit;
+    font-weight: 600;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .column-group input:focus,
 .column-group textarea:focus {
     border-color: var(--accent-teal);
-    box-shadow: 0 0 0 4px rgba(79, 182, 168, 0.1);
+    box-shadow: 0 0 0 3px rgba(79, 182, 168, 0.1);
     outline: none;
     background: var(--bg-input-focus);
 }
@@ -702,18 +738,19 @@ td {
 }
 
 .column-group .desc-input {
-    font-size: 0.9rem;
-    padding: 10px 12px;
-    min-height: 44px;
-    font-weight: 400;
+    font-size: 0.75rem;
+    padding: 4px 6px;
+    min-height: 32px;
+    font-weight: 600;
     color: var(--text-primary);
     background: var(--bg-input);
     border-color: var(--border-color);
-    resize: vertical;
+    resize: none;
     overflow: auto;
     word-wrap: break-word;
     white-space: pre-wrap;
-    line-height: 1.5;
+    line-height: 1.3;
+    flex-shrink: 0;
 }
 
 .column-group .desc-input:focus {
@@ -721,42 +758,32 @@ td {
     border-color: var(--accent-teal);
 }
 
-.column-group .trans-ref-input {
-    font-size: 0.82rem;
-    padding: 8px 10px;
+.column-group .trans-input {
+    font-size: 0.7rem;
+    padding: 3px 5px;
     background: var(--bg-input);
     border-color: var(--border-color);
-    resize: vertical;
+    resize: none;
     overflow: auto;
     word-wrap: break-word;
     white-space: pre-wrap;
-    line-height: 1.4;
+    line-height: 1.2;
+    font-weight: 600;
+    min-height: 24px;
+    flex-shrink: 0;
 }
-
-
-/* Amount input */
 
 .column-group .amount-input {
     font-weight: 700;
     text-align: right;
-    padding-right: 12px;
-    font-size: 0.85rem;
+    padding-right: 6px;
+    font-size: 0.75rem;
     background: var(--bg-input);
     border-color: var(--border-color);
     color: var(--accent-teal);
-    -moz-appearance: textfield;
-    appearance: textfield;
     width: 100%;
-}
-
-.column-group .amount-input::-webkit-outer-spin-button,
-.column-group .amount-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.column-group .amount-input[type="number"] {
-    -moz-appearance: textfield;
+    min-height: 24px;
+    flex-shrink: 0;
 }
 
 .column-group .amount-input:focus {
@@ -764,7 +791,7 @@ td {
 }
 
 
-/* Custom column styling */
+/* Custom Columns */
 
 .custom-column {
     background: rgba(79, 182, 168, 0.05);
@@ -775,34 +802,33 @@ td {
     color: var(--accent-teal);
 }
 
-.custom-column .desc-input {
-    background: var(--bg-input);
-    border-color: rgba(79, 182, 168, 0.12);
-}
 
-
-/* Description display */
+/* Description Display - Read More */
 
 .desc-display {
-    font-size: 0.85rem;
-    line-height: 1.5;
+    font-size: 0.7rem;
+    line-height: 1.3;
     color: var(--text-secondary);
-    padding: 6px 8px;
+    padding: 3px 5px;
     white-space: pre-wrap;
     word-wrap: break-word;
-    font-weight: 400;
+    font-weight: 600;
     background: var(--desc-bg);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--desc-border);
     cursor: pointer;
-    transition: 0.2s;
-    min-height: 72px;
-    max-height: 72px;
+    transition: background 0.2s, border-color 0.2s;
+    min-height: 32px;
+    height: 32px;
+    max-height: 32px;
     overflow: hidden;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 2px;
+    width: 100%;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .desc-display:hover {
@@ -814,12 +840,12 @@ td {
     color: var(--accent-teal);
     background: none;
     border: none;
-    font-size: 0.7rem;
+    font-size: 0.55rem;
     font-weight: 600;
     cursor: pointer;
-    padding: 0 4px;
+    padding: 0 3px;
     border-radius: 3px;
-    transition: 0.15s;
+    transition: background 0.15s;
     display: inline;
     white-space: nowrap;
 }
@@ -831,95 +857,48 @@ td {
 
 .desc-display .short-text {
     display: inline;
-    font-size: 0.85rem;
-    line-height: 1.4;
-}
-
-
-/* Date header row */
-
-.date-header-row td {
-    background: var(--table-header);
-    padding: 10px 16px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    border-top: 2px solid rgba(200, 154, 91, 0.12);
-    transition: background 0.3s ease, color 0.3s ease;
-}
-
-.date-header-row td:first-child {
-    background: var(--table-header);
-}
-
-.date-header-row .date-label {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-.date-header-row .date-label .date-badge {
-    background: var(--table-header);
-    color: var(--accent-brass);
-    padding: 4px 18px;
-    border-radius: 40px;
-    font-size: 0.82rem;
-    border: 1px solid rgba(200, 154, 91, 0.2);
-    font-weight: 600;
-    flex-shrink: 0;
-}
-
-.date-header-row .add-col-btn-header {
-    background: none;
-    border: 2px dashed rgba(200, 154, 91, 0.18);
-    border-radius: 30px;
-    padding: 4px 14px;
-    color: var(--accent-brass);
-    cursor: pointer;
     font-size: 0.7rem;
-    font-weight: 600;
-    transition: 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-    min-height: 30px;
-    margin-left: auto;
-}
-
-.date-header-row .add-col-btn-header:hover {
-    background: var(--bg-hover);
-    border-color: rgba(200, 154, 91, 0.28);
+    line-height: 1.3;
 }
 
 
-/* Row total */
+/* Row Total - Compact */
 
 .row-total-col {
     font-weight: 700;
     background: linear-gradient(135deg, rgba(79, 182, 168, 0.14) 0%, rgba(79, 182, 168, 0.06) 100%);
     text-align: center;
-    padding: 10px 4px;
-    border-radius: 6px;
-    font-size: 0.9rem;
+    padding: 6px 2px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
     color: var(--accent-teal);
+    width: 60px;
     min-width: 60px;
-    transition: background 0.3s ease, color 0.3s ease;
+    max-width: 60px;
+    transition: background var(--transition), color var(--transition);
+    vertical-align: middle;
 }
+
+
+/* Delete Row Button - Compact */
 
 .delete-row-btn {
     background: none;
     border: none;
     color: var(--text-dim);
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.6rem;
+    font-weight: 700;
     cursor: pointer;
-    padding: 4px 12px;
+    padding: 2px 6px;
     border-radius: 30px;
-    transition: 0.15s;
+    transition: background 0.15s, color 0.15s;
     background: var(--accent-red-bg);
     border: 1px solid rgba(226, 104, 91, 0.1);
+    width: 100%;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .delete-row-btn:hover {
@@ -928,126 +907,11 @@ td {
 }
 
 
-/* Column totals */
-
-.col-total-row td {
-    background: var(--total-row-bg);
-    font-weight: 700;
-    border-top: 2px solid var(--border-color);
-    padding: 10px 8px;
-    text-align: center;
-    color: var(--text-primary);
-    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-.col-total-row td:first-child {
-    background: var(--total-row-bg);
-    text-align: center;
-    padding-right: 8px;
-    font-size: 0.65rem;
-    letter-spacing: 0.3px;
-    vertical-align: middle;
-}
-
-.col-total-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--accent-brass);
-    letter-spacing: 1px;
-    display: inline-block;
-    padding: 2px 0;
-}
-
-
-/* Empty state */
-
-.empty-state {
-    text-align: center;
-    padding: 50px 20px;
-    color: var(--text-dim);
-    background: var(--bg-card);
-}
-
-.empty-state div {
-    font-size: 1.1rem;
-}
-
-.empty-state .icon {
-    font-size: 3rem;
-    opacity: 0.3;
-    display: block;
-    margin-bottom: 12px;
-}
-
-
-/* Action row */
-
-.action-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    justify-content: flex-end;
-    margin: 12px 0 24px;
-}
-
-
-/* Totals grid */
-
-.totals-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: flex-start;
-    margin: 24px 0 10px;
-}
-
-.total-card {
-    background: linear-gradient(135deg, rgba(200, 154, 91, 0.1) 0%, rgba(79, 182, 168, 0.08) 100%);
-    padding: 12px 28px 12px 24px;
-    border-radius: 60px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 10px var(--shadow-light);
-    border: 1px solid var(--border-color);
-    transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-.total-label {
-    font-weight: 600;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-}
-
-.total-value {
-    font-weight: 800;
-    font-size: 1.6rem;
-    color: var(--text-primary);
-}
-
-.hint {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-top: 14px;
-    padding-left: 8px;
-}
-
-
-/* Separator */
-
-.transaction-separator td {
-    padding: 0;
-    border-bottom: 2px dashed var(--border-color);
-    height: 8px;
-    background: var(--bg-card);
-}
-
-
-/* Date total row - without Save button */
+/* Date Total Row - Compact */
 
 .date-total-row td {
     background: linear-gradient(135deg, rgba(79, 182, 168, 0.08) 0%, rgba(79, 182, 168, 0.04) 100%);
-    padding: 10px 16px;
+    padding: 6px 12px;
     font-weight: 600;
     color: var(--accent-teal);
     border-top: 1px solid rgba(79, 182, 168, 0.08);
@@ -1056,7 +920,7 @@ td {
 .date-total-row .date-total-content {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
     width: 100%;
 }
@@ -1064,7 +928,7 @@ td {
 .date-total-row .date-total-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: wrap;
     justify-content: center;
     flex: 1;
@@ -1072,20 +936,28 @@ td {
 
 .date-total-row .date-total-actions .action-btn {
     border: none;
-    padding: 4px 14px;
+    padding: 2px 10px;
     border-radius: 30px;
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.65rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: 0.2s;
+    transition: transform 0.2s;
 }
 
 .date-total-row .date-total-actions .action-btn:hover {
     transform: scale(0.96);
 }
 
+.date-total-row .date-total-actions .save-btn {
+    background: linear-gradient(135deg, #1f5c3a 0%, #123d26 100%);
+    color: var(--accent-green);
+    border: 1px solid rgba(111, 203, 147, 0.2);
+}
 
-/* Removed Save button, keeping Edit, Delete, Add Row */
+.date-total-row .date-total-actions .save-btn.saved {
+    background: rgba(111, 203, 147, 0.1);
+    color: var(--accent-green);
+}
 
 .date-total-row .date-total-actions .edit-btn {
     background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
@@ -1102,7 +974,7 @@ td {
 .date-total-row .date-total-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     flex-wrap: wrap;
     margin-left: auto;
 }
@@ -1110,12 +982,12 @@ td {
 .date-total-row .date-total-label {
     font-weight: 600;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
 }
 
 .date-total-row .date-total-amount {
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: var(--text-primary);
 }
 
@@ -1123,12 +995,12 @@ td {
     background: linear-gradient(135deg, var(--accent-teal-dark) 0%, #0d332f 100%);
     color: var(--accent-teal-light);
     border: none;
-    padding: 4px 16px;
+    padding: 2px 12px;
     border-radius: 30px;
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.65rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: 0.2s;
+    transition: transform 0.2s;
     border: 1px solid rgba(95, 199, 188, 0.2);
 }
 
@@ -1137,7 +1009,148 @@ td {
 }
 
 
-/* Modals */
+/* Column Totals Footer - Compact */
+
+.col-total-row td {
+    background: var(--total-row-bg);
+    font-weight: 700;
+    border-top: 2px solid var(--border-color);
+    padding: 6px 4px;
+    text-align: center;
+    color: var(--text-primary);
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.col-total-row td:first-child {
+    background: var(--total-row-bg);
+    text-align: center;
+    font-size: 0.6rem;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+}
+
+.col-total-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent-brass);
+    letter-spacing: 1px;
+}
+
+.transaction-separator td {
+    padding: 0;
+    border-bottom: 2px dashed var(--border-color);
+    height: 4px;
+    background: var(--bg-card);
+}
+
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    margin: 8px 0 14px;
+}
+
+.totals-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-start;
+    margin: 14px 0 6px;
+}
+
+.total-card {
+    background: linear-gradient(135deg, rgba(200, 154, 91, 0.1) 0%, rgba(79, 182, 168, 0.08) 100%);
+    padding: 6px 16px 6px 14px;
+    border-radius: 60px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 10px var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.total-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.total-value {
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.hint {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+    padding-left: 4px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 30px 16px;
+    color: var(--text-dim);
+    background: var(--bg-card);
+}
+
+.empty-state div {
+    font-size: 0.9rem;
+}
+
+.empty-state .icon {
+    font-size: 2rem;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 8px;
+}
+
+
+/* Custom Column Buttons */
+
+.save-col-btn {
+    background: rgba(79, 182, 168, 0.1);
+    border: 1px solid rgba(79, 182, 168, 0.15);
+    border-radius: 20px;
+    padding: 1px 6px;
+    color: var(--accent-teal);
+    font-size: 0.55rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.save-col-btn:hover {
+    background: rgba(79, 182, 168, 0.18);
+}
+
+.delete-col-btn {
+    background: var(--accent-red-bg);
+    border: 1px solid rgba(226, 104, 91, 0.1);
+    border-radius: 20px;
+    padding: 1px 6px;
+    color: var(--accent-red);
+    font-size: 0.55rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.delete-col-btn:hover {
+    background: rgba(226, 104, 91, 0.2);
+}
+
+
+/* ======================================== */
+
+
+/* MODALS */
+
+
+/* ======================================== */
 
 .modal {
     display: none;
@@ -1150,7 +1163,7 @@ td {
     background: var(--modal-bg);
     backdrop-filter: blur(4px);
     overflow: auto;
-    padding: 20px;
+    padding: 16px;
 }
 
 .modal.show {
@@ -1161,7 +1174,7 @@ td {
 
 .modal-content {
     background: var(--bg-secondary);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     max-width: 600px;
     width: 100%;
     max-height: 80vh;
@@ -1170,22 +1183,22 @@ td {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: background 0.3s ease, border-color 0.3s ease;
+    transition: background var(--transition), border-color var(--transition);
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 24px;
+    padding: 14px 18px;
     border-bottom: 1px solid var(--border-color);
     background: var(--table-header);
-    transition: background 0.3s ease, border-color 0.3s ease;
+    transition: background var(--transition), border-color var(--transition);
 }
 
 .modal-header h3 {
     color: var(--accent-brass);
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     margin: 0;
 }
@@ -1194,10 +1207,10 @@ td {
     background: none;
     border: none;
     color: var(--text-dim);
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     cursor: pointer;
-    transition: 0.2s;
-    padding: 0 8px;
+    transition: color 0.2s, transform 0.2s;
+    padding: 0 6px;
     line-height: 1;
 }
 
@@ -1207,31 +1220,26 @@ td {
 }
 
 .modal-body {
-    padding: 24px;
+    padding: 16px 18px;
     overflow-y: auto;
     flex: 1;
     color: var(--text-secondary);
-    font-size: 0.95rem;
-    line-height: 1.8;
+    font-size: 0.85rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     word-wrap: break-word;
 }
 
-.modal-body .modal-text {
-    margin: 0;
-    padding: 0;
-}
 
-
-/* User management */
+/* User Management */
 
 .user-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 14px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--border-color);
-    transition: background 0.2s ease;
+    transition: background 0.2s;
 }
 
 .user-item:hover {
@@ -1241,12 +1249,11 @@ td {
 .user-item .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
 .user-item .user-info .user-icon {
-    font-size: 1.2rem;
-    color: var(--accent-teal);
+    font-size: 1rem;
 }
 
 .user-item .user-info .user-details {
@@ -1257,11 +1264,11 @@ td {
 .user-item .user-info .user-details .username {
     font-weight: 600;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .user-item .user-info .user-details .user-role {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1269,18 +1276,22 @@ td {
 
 .user-item .user-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
+}
+
+.user-item .user-actions .btn-edit-user,
+.user-item .user-actions .btn-delete-user {
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: background 0.15s;
 }
 
 .user-item .user-actions .btn-edit-user {
-    background: none;
-    border: none;
     color: var(--accent-teal);
-    cursor: pointer;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    transition: 0.15s;
     background: rgba(79, 182, 168, 0.08);
 }
 
@@ -1289,14 +1300,7 @@ td {
 }
 
 .user-item .user-actions .btn-delete-user {
-    background: none;
-    border: none;
     color: var(--accent-red);
-    cursor: pointer;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    transition: 0.15s;
     background: var(--accent-red-bg);
 }
 
@@ -1309,278 +1313,509 @@ td {
     border-left: 3px solid var(--accent-teal);
 }
 
-.user-item .user-info .user-details .current-badge {
-    font-size: 0.6rem;
-    color: var(--accent-teal);
-    font-weight: 600;
-}
+
+/* ======================================== */
 
 
-/* Custom column buttons */
-
-.save-col-btn {
-    background: rgba(79, 182, 168, 0.1);
-    border: 1px solid rgba(79, 182, 168, 0.15);
-    border-radius: 20px;
-    padding: 2px 10px;
-    color: var(--accent-teal);
-    font-size: 0.65rem;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.save-col-btn:hover {
-    background: rgba(79, 182, 168, 0.18);
-}
-
-.delete-col-btn {
-    background: var(--accent-red-bg);
-    border: 1px solid rgba(226, 104, 91, 0.1);
-    border-radius: 20px;
-    padding: 2px 10px;
-    color: var(--accent-red);
-    font-size: 0.65rem;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.delete-col-btn:hover {
-    background: rgba(226, 104, 91, 0.2);
-}
+/* RESPONSIVE - MOBILE FIRST (LARGE FONTS) */
 
 
 /* ======================================== */
 
 
-/* RESPONSIVE - PHONE FIRST WITH BIGGER BUTTONS */
+/* =========================================================
+   DESKTOP LAYOUT UPGRADE
+   - Larger desktop interface and readable fonts
+   - More horizontal space for main transaction columns
+   - Last two columns (TOTAL + DELETE) kept compact
+   - MOBILE RULES BELOW ARE LEFT INTACT
+   ========================================================= */
+
+@media (min-width: 769px) {
+    body {
+        padding: 16px;
+    }
+    .app-wrapper {
+        max-width: 1900px;
+        padding: 20px 22px 28px;
+    }
+    .app-header {
+        padding: 16px 20px;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+    .header-left {
+        gap: 14px;
+    }
+    .header-left h1 {
+        font-size: 1.9rem;
+    }
+    .subtitle {
+        font-size: 0.78rem;
+        padding: 5px 14px;
+    }
+    .user-badge {
+        font-size: 0.8rem;
+        padding: 5px 12px;
+    }
+    .btn {
+        padding: 8px 15px;
+        font-size: 0.78rem;
+    }
+    .btn-theme {
+        padding: 7px 14px;
+        font-size: 0.78rem;
+    }
+    .btn-filter {
+        padding: 7px 14px;
+        font-size: 0.72rem;
+    }
+    .btn-pdf {
+        padding: 7px 15px;
+        font-size: 0.78rem;
+    }
+    .btn-add,
+    .btn-add-secondary {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    .filter-panel {
+        gap: 7px 10px;
+        padding: 7px 12px 7px 14px;
+    }
+    .filter-panel label {
+        font-size: 0.72rem;
+    }
+    .date-input {
+        max-width: 145px;
+        padding: 6px 10px;
+        font-size: 0.82rem;
+        min-height: 34px;
+    }
+    .table-container {
+        margin: 14px 0 10px;
+    }
+    .table-responsive {
+        padding: 5px 0;
+    }
+    table {
+        min-width: 1350px;
+        font-size: 0.95rem;
+    }
+    /*
+       Main transaction columns get the available width.
+       The final two columns are deliberately compact.
+    */
+    table th:first-child,
+    table td:first-child {
+        width: 80px;
+        min-width: 80px;
+        max-width: 80px;
+    }
+    table th:nth-last-child(2),
+    table td:nth-last-child(2) {
+        width: 105px;
+        min-width: 105px;
+        max-width: 105px;
+    }
+    table th:last-child,
+    table td:last-child {
+        width: 88px;
+        min-width: 88px;
+        max-width: 88px;
+    }
+    th,
+    .date-column-header td {
+        padding: 10px 7px;
+        font-size: 0.76rem;
+        letter-spacing: 0.55px;
+    }
+    .date-header-row td {
+        padding: 9px 14px;
+        font-size: 0.95rem;
+    }
+    .date-header-row .date-badge {
+        padding: 4px 15px;
+        font-size: 0.95rem;
+    }
+    .date-header-row .add-col-btn-header {
+        padding: 4px 12px;
+        font-size: 0.7rem;
+        min-height: 30px;
+    }
+    td {
+        padding: 4px 4px;
+    }
+    .column-group {
+        gap: 5px;
+        padding: 7px 6px;
+        min-height: 178px;
+        height: 178px;
+        max-height: 178px;
+    }
+    .column-group .field-header {
+        font-size: 0.62rem;
+        letter-spacing: 0.7px;
+        padding: 1px 3px;
+        line-height: 1.2;
+    }
+    .column-group input,
+    .column-group textarea {
+        padding: 7px 8px;
+        font-size: 0.9rem;
+        min-height: 34px;
+    }
+    .column-group .desc-input {
+        font-size: 0.92rem;
+        padding: 7px 9px;
+        min-height: 40px;
+        line-height: 1.35;
+    }
+    .column-group .trans-input {
+        font-size: 0.88rem;
+        padding: 6px 8px;
+        min-height: 31px;
+        line-height: 1.25;
+    }
+    .column-group .amount-input {
+        font-size: 0.92rem;
+        padding: 6px 8px;
+        min-height: 31px;
+    }
+    .desc-display {
+        font-size: 0.88rem;
+        line-height: 1.35;
+        padding: 5px 7px;
+        min-height: 40px;
+        height: 40px;
+        max-height: 40px;
+    }
+    .desc-display .short-text {
+        font-size: 0.88rem;
+        line-height: 1.35;
+    }
+    .desc-display .read-more-btn {
+        font-size: 0.65rem;
+        padding: 0 4px;
+    }
+    .row-total-col {
+        font-size: 0.95rem;
+        padding: 8px 4px;
+    }
+    .delete-row-btn {
+        font-size: 0.68rem;
+        padding: 5px 7px;
+        min-height: 28px;
+    }
+    .date-total-row td {
+        padding: 8px 14px;
+    }
+    .date-total-row .date-total-label {
+        font-size: 0.82rem;
+    }
+    .date-total-row .date-total-amount {
+        font-size: 1.05rem;
+    }
+    .date-total-row .date-total-actions .action-btn {
+        padding: 4px 12px;
+        font-size: 0.7rem;
+    }
+    .date-total-row .date-total-add-row .add-row-inline-btn {
+        padding: 4px 14px;
+        font-size: 0.7rem;
+    }
+    .col-total-row td {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+    }
+    .col-total-label {
+        font-size: 0.72rem;
+    }
+    .total-card {
+        padding: 9px 18px 9px 16px;
+        gap: 14px;
+    }
+    .total-label {
+        font-size: 0.78rem;
+    }
+    .total-value {
+        font-size: 1.35rem;
+    }
+    .hint {
+        font-size: 0.72rem;
+    }
+    .save-col-btn,
+    .delete-col-btn {
+        font-size: 0.62rem;
+        padding: 2px 7px;
+    }
+    .modal-content {
+        max-width: 700px;
+    }
+    .modal-header {
+        padding: 16px 20px;
+    }
+    .modal-header h3 {
+        font-size: 1.05rem;
+    }
+    .modal-body {
+        padding: 20px;
+        font-size: 0.92rem;
+    }
+    .user-item {
+        padding: 8px 12px;
+    }
+    .user-item .user-info .user-details .username {
+        font-size: 0.88rem;
+    }
+    .user-item .user-info .user-details .user-role {
+        font-size: 0.68rem;
+    }
+}
 
 
-/* ======================================== */
+/* =========================================================
+   END DESKTOP LAYOUT UPGRADE
+   ========================================================= */
 
 @media (max-width: 768px) {
+    body {
+        padding: 4px;
+    }
     .app-wrapper {
-        padding: 12px;
+        padding: 6px 4px 12px;
+        border-radius: var(--radius);
     }
     .app-header {
         flex-direction: column;
         align-items: stretch;
-        padding: 12px 16px;
-        gap: 12px;
-    }
-    .header-left h1 {
-        font-size: 1.4rem;
+        padding: 8px 10px;
+        gap: 8px;
+        border-radius: var(--radius-sm);
     }
     .header-left {
-        gap: 10px;
+        gap: 5px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .header-left h1 {
+        font-size: 1.2rem;
     }
     .subtitle {
-        font-size: 0.65rem;
-        padding: 4px 14px;
+        font-size: 0.55rem;
+        padding: 2px 8px;
     }
     .user-badge {
-        font-size: 0.75rem;
-        padding: 5px 14px;
+        font-size: 0.6rem;
+        padding: 2px 8px;
     }
-    /* Bigger buttons on mobile */
     .btn {
-        font-size: 0.85rem;
-        padding: 10px 18px;
-        min-height: 44px;
-        border-radius: 12px;
+        font-size: 0.75rem !important;
+        padding: 8px 14px !important;
+        min-height: 36px !important;
+        border-radius: var(--radius-sm);
     }
     .btn-theme,
     .btn-admin,
-    .btn-password,
-    .btn-logout {
-        font-size: 0.8rem;
-        padding: 8px 16px;
-        min-height: 40px;
-    }
-    .header-right {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        justify-content: flex-start;
+    .btn-logout,
+    .btn-sync {
+        font-size: 0.7rem !important;
+        padding: 6px 12px !important;
+        min-height: 32px !important;
     }
     .filter-panel {
-        border-radius: 40px;
-        justify-content: center;
-        padding: 12px 14px;
+        border-radius: 30px;
+        padding: 6px 8px;
+        gap: 4px;
+        width: 100%;
         flex-wrap: wrap;
-        gap: 8px;
     }
     .filter-panel label {
-        font-size: 0.8rem;
+        font-size: 0.6rem;
     }
     .date-input {
         max-width: 100%;
         width: 100%;
-        font-size: 0.9rem;
-        padding: 10px 12px;
-        min-height: 44px;
+        font-size: 0.8rem;
+        padding: 6px 8px;
+        min-height: 34px;
     }
     .btn-filter,
-    .btn-filter-outline,
     .btn-pdf {
         flex: 1;
         justify-content: center;
-        font-size: 0.8rem;
-        padding: 10px 14px;
-        min-height: 44px;
+        font-size: 0.7rem !important;
+        padding: 6px 10px !important;
+        min-height: 34px !important;
     }
     .action-row {
         flex-direction: column;
-        gap: 10px;
+        gap: 6px;
+        width: 100%;
     }
     .btn-add,
     .btn-add-secondary {
         width: 100%;
         justify-content: center;
-        font-size: 0.9rem;
-        padding: 14px 20px;
-        min-height: 50px;
+        font-size: 0.85rem !important;
+        padding: 10px 16px !important;
+        min-height: 42px !important;
     }
     .totals-grid {
         flex-direction: column;
+        gap: 6px;
+        width: 100%;
     }
     .total-card {
         justify-content: space-between;
         width: 100%;
-        padding: 14px 20px;
+        padding: 8px 14px;
+        border-radius: 30px;
     }
     .total-label {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
     }
     .total-value {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
     }
-    table,
-    thead,
-    tbody,
-    th,
-    td,
-    tr {
-        display: block;
+    .table-container {
+        margin: 6px 0;
+        border-radius: var(--radius-sm);
+        width: 100%;
     }
     .table-responsive {
         overflow-x: visible;
         padding: 0;
+        width: 100%;
     }
     table {
         min-width: unset;
         width: 100%;
         font-size: 0.9rem;
+        table-layout: auto;
     }
     thead tr {
         display: none;
     }
     tbody tr {
         display: block;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
         border: 1px solid var(--border-color);
-        border-radius: 14px;
+        border-radius: var(--radius-sm);
         background: var(--bg-card);
-        box-shadow: 0 4px 16px var(--shadow-light);
+        box-shadow: 0 1px 4px var(--shadow-light);
         overflow: hidden;
-        padding: 4px;
+        padding: 0;
+        width: 100%;
     }
     .date-header-row {
         display: block;
-        margin-bottom: 12px;
+        margin-bottom: 6px;
         border: none;
-        border-radius: 14px;
+        border-radius: var(--radius-sm);
         background: var(--table-header);
-        box-shadow: 0 2px 8px var(--shadow-light);
+        box-shadow: 0 1px 4px var(--shadow-light);
+        width: 100%;
     }
     .date-header-row td {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: flex-start;
-        padding: 14px 16px;
+        padding: 8px 10px;
         border: none;
         background: transparent;
-        gap: 8px;
+        gap: 4px;
+        width: 100%;
     }
     .date-header-row td:first-child {
         background: transparent;
         border-radius: 0;
+        width: 100%;
     }
     .date-header-row .date-label {
         width: 100%;
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 4px;
     }
     .date-header-row .date-badge {
-        font-size: 1rem;
-        padding: 6px 18px;
+        font-size: 0.9rem;
+        padding: 3px 12px;
     }
     .date-header-row .add-col-btn-header {
         margin-left: 0;
         width: 100%;
         justify-content: center;
-        font-size: 0.8rem;
-        padding: 8px 14px;
-        min-height: 40px;
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        min-height: 30px;
+    }
+    .date-column-header td {
+        display: none;
     }
     .date-total-row td {
         display: flex;
         flex-wrap: wrap;
-        padding: 12px 14px;
+        padding: 8px 10px;
         background: rgba(79, 182, 168, 0.06);
-        border-radius: 0 0 12px 12px;
-        gap: 8px;
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        gap: 4px;
+        width: 100%;
     }
     .date-total-row td:before {
         content: "";
         width: 0;
         border-bottom: none;
-        padding-bottom: 0;
-        margin-bottom: 0;
     }
     .date-total-row .date-total-content {
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
+        gap: 4px;
+        width: 100%;
     }
     .date-total-row .date-total-actions {
         justify-content: center;
         width: 100%;
-        gap: 8px;
+        gap: 4px;
+        flex-wrap: wrap;
     }
     .date-total-row .date-total-actions .action-btn {
-        font-size: 0.8rem;
-        padding: 8px 16px;
-        min-height: 40px;
+        font-size: 0.75rem !important;
+        padding: 6px 12px !important;
+        min-height: 34px !important;
+        flex: 1;
+        justify-content: center;
     }
     .date-total-row .date-total-right {
         margin-left: 0;
         justify-content: center;
         width: 100%;
-        gap: 8px;
+        gap: 4px;
+        flex-wrap: wrap;
     }
     .date-total-row .date-total-label {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
     .date-total-row .date-total-amount {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
     .date-total-row .date-total-add-row .add-row-inline-btn {
         width: 100%;
         justify-content: center;
-        font-size: 0.85rem;
-        padding: 10px 16px;
-        min-height: 44px;
+        font-size: 0.75rem !important;
+        padding: 6px 12px !important;
+        min-height: 34px !important;
     }
     tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
         display: block;
-        margin: 12px 6px;
+        margin: 6px 0;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: var(--radius-sm);
         background: var(--bg-card);
-        padding: 10px 8px;
-        box-shadow: 0 2px 8px var(--shadow-light);
+        padding: 6px 4px;
+        box-shadow: 0 1px 4px var(--shadow-light);
+        width: 100%;
     }
     td {
         display: flex;
@@ -1588,9 +1823,12 @@ td {
         align-items: center;
         border: none;
         border-bottom: 1px solid var(--border-color);
-        padding: 10px 8px;
+        padding: 6px 4px;
         background: transparent;
-        gap: 8px;
+        gap: 3px;
+        width: 100%;
+        min-width: unset !important;
+        max-width: unset !important;
     }
     td:last-child {
         border-bottom: none;
@@ -1598,97 +1836,85 @@ td {
     td:before {
         content: attr(data-label);
         font-weight: 700;
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         color: var(--accent-brass);
         text-transform: uppercase;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
         width: 100%;
         flex-shrink: 0;
-        padding-bottom: 4px;
+        padding-bottom: 2px;
         border-bottom: 1px solid var(--border-color);
-        margin-bottom: 4px;
+        margin-bottom: 2px;
     }
     td:first-child:before {
         content: "";
         width: 0;
         border-bottom: none;
-        padding-bottom: 0;
-        margin-bottom: 0;
     }
     td:first-child {
         background: var(--bg-card);
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--text-dim);
         justify-content: center;
-        padding: 8px;
+        padding: 4px;
+        border-bottom: none;
     }
     .column-group {
         flex: 1;
         min-width: 0;
-        padding: 4px 2px;
+        padding: 3px 2px;
         background: transparent;
-        gap: 6px;
+        gap: 3px;
+        min-height: 110px;
+        height: auto;
+        max-height: none;
+        width: 100%;
     }
     .column-group .field-header {
-        font-size: 0.6rem;
-        letter-spacing: 0.8px;
-        padding: 3px 0;
-        color: var(--accent-teal);
-    }
-    .column-group .col-name-input {
-        font-size: 0.8rem;
-        padding: 6px 10px;
-        min-height: 40px;
+        font-size: 0.55rem;
+        letter-spacing: 0.5px;
+        padding: 2px 0;
     }
     .column-group input,
     .column-group textarea {
-        font-size: 0.9rem;
-        padding: 10px 12px;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        background: var(--bg-input);
-        min-height: 44px;
+        font-size: 0.8rem !important;
+        padding: 6px 8px !important;
+        border-radius: var(--radius-sm);
+        min-height: 32px !important;
+        width: 100%;
     }
     .column-group .desc-input {
-        font-size: 0.95rem;
-        padding: 12px 14px;
-        min-height: 50px;
+        font-size: 0.85rem !important;
+        padding: 6px 8px !important;
+        min-height: 36px !important;
     }
-    .column-group .trans-ref-input {
-        font-size: 0.9rem;
-        padding: 10px 12px;
-        min-height: 44px;
+    .column-group .trans-input {
+        font-size: 0.8rem !important;
+        padding: 5px 7px !important;
+        min-height: 30px !important;
     }
     .column-group .amount-input {
-        font-size: 0.9rem;
-        padding: 10px 12px;
-        min-height: 44px;
+        font-size: 0.85rem !important;
+        padding: 5px 7px !important;
+        min-height: 30px !important;
     }
     .desc-display {
-        font-size: 0.9rem;
-        padding: 8px 10px;
-        background: var(--desc-bg);
-        border: 1px solid var(--desc-border);
-        border-radius: 8px;
-        width: 100%;
-        color: var(--text-secondary);
-        min-height: 50px;
-        max-height: 50px;
+        font-size: 0.8rem !important;
+        padding: 4px 6px !important;
+        min-height: 36px !important;
+        height: 36px !important;
+        max-height: 36px !important;
     }
     .row-total-col {
-        font-size: 0.95rem;
-        padding: 10px 12px;
-        background: linear-gradient(135deg, rgba(79, 182, 168, 0.12) 0%, rgba(79, 182, 168, 0.05) 100%);
-        border-radius: 8px;
-        text-align: center;
-        font-weight: 700;
-        color: var(--accent-teal);
-        min-height: 44px;
+        font-size: 0.95rem !important;
+        padding: 6px 8px !important;
+        min-height: 34px !important;
+        width: 100% !important;
     }
     .delete-row-btn {
-        font-size: 0.8rem;
-        padding: 10px 14px;
-        min-height: 44px;
+        font-size: 0.75rem !important;
+        padding: 5px 10px !important;
+        min-height: 32px !important;
         width: 100%;
     }
     .transaction-separator {
@@ -1697,22 +1923,23 @@ td {
     .col-total-row td {
         display: flex;
         justify-content: space-between;
-        padding: 12px 14px;
+        padding: 6px 8px;
         border-bottom: 1px solid var(--border-color);
         background: transparent;
-        font-size: 0.8rem;
-        min-height: 44px;
+        font-size: 0.75rem;
+        min-height: 30px;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 2px;
     }
     .col-total-row td:before {
         content: attr(data-label);
-        font-weight: 600;
-        font-size: 0.7rem;
+        font-weight: 700;
+        font-size: 0.55rem;
         color: var(--accent-brass);
         text-transform: uppercase;
         width: auto;
         border-bottom: none;
-        padding-bottom: 0;
-        margin-bottom: 0;
     }
     .col-total-row td:first-child:before {
         content: "";
@@ -1720,264 +1947,310 @@ td {
     }
     .col-total-row td:first-child {
         background: var(--total-row-bg);
-        border-radius: 8px 8px 0 0;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
         width: 100%;
-        min-width: unset;
         justify-content: center;
-        padding: 12px;
+        padding: 6px;
     }
     .col-total-row td:last-child {
         border-bottom: none;
     }
     .user-item {
         flex-wrap: wrap;
-        gap: 8px;
-        padding: 12px 14px;
+        gap: 4px;
+        padding: 6px 8px;
     }
     .user-item .user-actions {
         width: 100%;
         justify-content: flex-start;
-        gap: 8px;
+        gap: 4px;
     }
     .user-item .user-actions button {
-        font-size: 0.8rem;
-        padding: 8px 14px;
-        min-height: 40px;
+        font-size: 0.75rem !important;
+        padding: 4px 10px !important;
+        min-height: 30px !important;
     }
     .user-item .user-info .username {
-        font-size: 0.95rem;
+        font-size: 0.85rem;
     }
     .modal-content {
         max-width: 100%;
-        margin: 8px;
-        border-radius: 16px;
+        margin: 4px;
+        border-radius: var(--radius);
     }
     .modal-header {
-        padding: 16px 18px;
+        padding: 10px 12px;
     }
     .modal-header h3 {
-        font-size: 1rem;
-    }
-    .modal-body {
-        padding: 16px 18px;
-    }
-    .login-container {
-        margin: 10px;
-        padding: 24px 18px 18px;
-    }
-    .login-header {
-        padding: 20px 20px 16px;
-    }
-    .login-header h1 {
-        font-size: 1.8rem;
-    }
-    .login-body {
-        padding: 20px;
-    }
-    .login-input {
-        font-size: 1rem;
-        padding: 14px 16px;
-        min-height: 48px;
-    }
-    .login-btn {
-        font-size: 1rem;
-        padding: 16px;
-        min-height: 50px;
-    }
-    .login-input-group label {
         font-size: 0.85rem;
     }
-    .btn-add,
-    .btn-add-secondary {
-        font-size: 0.9rem;
-        padding: 14px 20px;
-        min-height: 50px;
+    .modal-body {
+        padding: 10px 12px;
+    }
+    .login-container {
+        margin: 4px;
+        border-radius: var(--radius);
+    }
+    .login-header {
+        padding: 16px 12px 10px;
+    }
+    .login-header .login-icon {
+        font-size: 2rem;
+    }
+    .login-header h1 {
+        font-size: 1.3rem;
+    }
+    .login-header p {
+        font-size: 0.65rem;
+    }
+    .login-body {
+        padding: 12px 12px 10px;
+    }
+    .login-input {
+        font-size: 0.85rem !important;
+        padding: 10px 12px !important;
+        min-height: 40px !important;
+    }
+    .login-btn {
+        font-size: 0.85rem !important;
+        padding: 12px !important;
+        min-height: 42px !important;
+    }
+    .login-input-group label {
+        font-size: 0.65rem;
+    }
+    .login-footer {
+        padding: 8px 12px;
+    }
+    .login-footer span {
+        font-size: 0.55rem;
+    }
+    .hint {
+        font-size: 0.65rem;
     }
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 2px;
+    }
     .app-wrapper {
-        padding: 8px;
+        padding: 4px 2px 8px;
+        border-radius: var(--radius-sm);
     }
     .header-left h1 {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
     .header-left {
-        gap: 6px;
+        gap: 3px;
+        justify-content: center;
     }
     .subtitle {
-        font-size: 0.55rem;
-        padding: 3px 10px;
+        font-size: 0.45rem;
+        padding: 1px 6px;
     }
     .user-badge {
-        font-size: 0.65rem;
-        padding: 3px 10px;
+        font-size: 0.5rem;
+        padding: 1px 6px;
     }
     .btn {
-        font-size: 0.75rem;
-        padding: 8px 14px;
-        min-height: 38px;
+        font-size: 0.7rem !important;
+        padding: 6px 10px !important;
+        min-height: 30px !important;
     }
     .btn-theme,
     .btn-admin,
-    .btn-password,
-    .btn-logout {
-        font-size: 0.7rem;
-        padding: 6px 12px;
-        min-height: 34px;
+    .btn-logout,
+    .btn-sync {
+        font-size: 0.6rem !important;
+        padding: 4px 8px !important;
+        min-height: 26px !important;
     }
     .filter-panel {
-        padding: 10px 12px;
-        gap: 6px;
+        padding: 4px 6px;
+        gap: 3px;
+        border-radius: 20px;
     }
     .filter-panel label {
-        font-size: 0.7rem;
+        font-size: 0.5rem;
     }
     .date-input {
-        font-size: 0.8rem;
-        padding: 8px 10px;
-        min-height: 38px;
+        font-size: 0.7rem !important;
+        padding: 4px 6px !important;
+        min-height: 28px !important;
     }
     .btn-filter,
-    .btn-filter-outline,
     .btn-pdf {
-        font-size: 0.7rem;
-        padding: 8px 10px;
-        min-height: 38px;
+        font-size: 0.6rem !important;
+        padding: 4px 6px !important;
+        min-height: 28px !important;
     }
     .btn-add,
     .btn-add-secondary {
-        font-size: 0.8rem;
-        padding: 12px 16px;
-        min-height: 44px;
+        font-size: 0.75rem !important;
+        padding: 8px 12px !important;
+        min-height: 36px !important;
     }
     .total-label {
-        font-size: 0.8rem;
+        font-size: 0.65rem;
     }
     .total-value {
-        font-size: 1.2rem;
+        font-size: 1rem;
+    }
+    .total-card {
+        padding: 4px 10px;
+        border-radius: 20px;
     }
     td {
-        padding: 8px 6px;
+        padding: 4px 2px;
     }
     td:before {
-        font-size: 0.6rem;
+        font-size: 0.5rem;
     }
     .column-group input,
     .column-group textarea {
-        font-size: 0.8rem;
-        padding: 8px 10px;
-        min-height: 38px;
+        font-size: 0.7rem !important;
+        padding: 4px 6px !important;
+        min-height: 26px !important;
     }
     .column-group .desc-input {
-        font-size: 0.85rem;
-        padding: 10px 12px;
-        min-height: 44px;
+        font-size: 0.75rem !important;
+        padding: 4px 6px !important;
+        min-height: 30px !important;
+    }
+    .column-group .trans-input {
+        font-size: 0.7rem !important;
+        padding: 3px 5px !important;
+        min-height: 24px !important;
+    }
+    .column-group .amount-input {
+        font-size: 0.75rem !important;
+        padding: 3px 5px !important;
+        min-height: 24px !important;
     }
     .column-group .field-header {
-        font-size: 0.5rem;
+        font-size: 0.45rem;
     }
     .date-header-row td {
-        padding: 10px 12px;
+        padding: 4px 6px;
     }
     .date-header-row .date-badge {
-        font-size: 0.85rem;
-        padding: 4px 14px;
+        font-size: 0.7rem;
+        padding: 2px 8px;
     }
     .desc-display {
-        font-size: 0.8rem;
-        padding: 6px 8px;
-        min-height: 44px;
-        max-height: 44px;
+        font-size: 0.7rem !important;
+        padding: 3px 4px !important;
+        min-height: 30px !important;
+        height: 30px !important;
+        max-height: 30px !important;
     }
     .row-total-col {
-        font-size: 0.85rem;
-        padding: 8px 10px;
-        min-height: 38px;
+        font-size: 0.85rem !important;
+        padding: 4px 6px !important;
+        min-height: 28px !important;
     }
     .date-total-row td {
-        padding: 10px 12px;
+        padding: 4px 6px;
     }
     .date-total-row .date-total-actions .action-btn {
-        font-size: 0.7rem;
-        padding: 6px 12px;
-        min-height: 34px;
+        font-size: 0.65rem !important;
+        padding: 4px 8px !important;
+        min-height: 28px !important;
     }
     .date-total-row .date-total-label {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
     }
     .date-total-row .date-total-amount {
-        font-size: 0.95rem;
-    }
-    .date-total-row .date-total-add-row .add-row-inline-btn {
-        font-size: 0.75rem;
-        padding: 8px 14px;
-        min-height: 38px;
-    }
-    .delete-row-btn {
-        font-size: 0.7rem;
-        padding: 8px 12px;
-        min-height: 38px;
-    }
-    .date-header-row .add-col-btn-header {
-        font-size: 0.7rem;
-        padding: 6px 12px;
-        min-height: 34px;
-    }
-    tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
-        padding: 6px 4px;
-        margin: 8px 4px;
-    }
-    .col-total-row td {
-        padding: 10px 12px;
-        font-size: 0.7rem;
-        min-height: 38px;
-    }
-    .user-item {
-        padding: 10px 12px;
-    }
-    .user-item .user-actions button {
-        font-size: 0.7rem;
-        padding: 6px 10px;
-        min-height: 34px;
-    }
-    .user-item .user-info .username {
         font-size: 0.85rem;
     }
+    .date-total-row .date-total-add-row .add-row-inline-btn {
+        font-size: 0.65rem !important;
+        padding: 4px 8px !important;
+        min-height: 28px !important;
+    }
+    .delete-row-btn {
+        font-size: 0.65rem !important;
+        padding: 4px 6px !important;
+        min-height: 26px !important;
+    }
+    .date-header-row .add-col-btn-header {
+        font-size: 0.6rem;
+        padding: 3px 8px;
+        min-height: 24px;
+    }
+    tbody tr:not(.date-header-row):not(.transaction-separator):not(.date-total-row) {
+        padding: 4px 2px;
+        margin: 4px 0;
+    }
+    .col-total-row td {
+        padding: 4px 6px;
+        font-size: 0.65rem;
+        min-height: 24px;
+    }
+    .user-item {
+        padding: 4px 6px;
+    }
+    .user-item .user-actions button {
+        font-size: 0.65rem !important;
+        padding: 3px 6px !important;
+        min-height: 26px !important;
+    }
+    .user-item .user-info .username {
+        font-size: 0.75rem;
+    }
     .login-container {
-        padding: 20px 14px 14px;
-        margin: 8px;
+        margin: 2px;
+        border-radius: var(--radius-sm);
     }
     .login-header {
-        padding: 16px 16px 12px;
+        padding: 12px 8px 8px;
+    }
+    .login-header .login-icon {
+        font-size: 1.6rem;
     }
     .login-header h1 {
-        font-size: 1.5rem;
+        font-size: 1.1rem;
+    }
+    .login-header p {
+        font-size: 0.55rem;
     }
     .login-body {
-        padding: 16px;
+        padding: 8px 8px 6px;
     }
     .login-input {
-        font-size: 0.9rem;
-        padding: 12px 14px;
-        min-height: 44px;
+        font-size: 0.75rem !important;
+        padding: 8px 10px !important;
+        min-height: 34px !important;
     }
     .login-btn {
-        font-size: 0.9rem;
-        padding: 14px;
-        min-height: 46px;
+        font-size: 0.75rem !important;
+        padding: 10px !important;
+        min-height: 36px !important;
+    }
+    .login-input-group label {
+        font-size: 0.55rem;
+    }
+    .login-footer {
+        padding: 6px 8px;
+    }
+    .login-footer span {
+        font-size: 0.45rem;
     }
     .modal-content {
-        margin: 4px;
-        border-radius: 12px;
+        margin: 2px;
+        border-radius: var(--radius-sm);
     }
     .modal-header {
-        padding: 12px 14px;
+        padding: 6px 8px;
     }
     .modal-header h3 {
-        font-size: 0.9rem;
+        font-size: 0.7rem;
     }
     .modal-body {
-        padding: 12px 14px;
+        padding: 6px 8px;
+    }
+    .hint {
+        font-size: 0.55rem;
     }
 }
