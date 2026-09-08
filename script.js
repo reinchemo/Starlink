@@ -1,53 +1,70 @@
 // script.js – With Login System, Auto-calculating Totals, Save Button, and Supabase Cloud Sync
+// FIX APPLIED: handleChangePassword() no longer crashes when opened before login
+// FIX APPLIED: Amount display now uses .amount-display class with visible styling
+// FIX APPLIED: Duplicate column headers removed on mobile
+// FIX APPLIED: Editable column names for ALL columns (default + custom)
+// FIX APPLIED: Mobile expenditure cells with .expenditure-cell class
+// FIX APPLIED: Mobile column totals with .column-total-cell class
+// FIX APPLIED: M-Pesa message parsing - extracts amount, date, time, and transaction cost
+// FIX APPLIED: Transaction fees tracking with separate display
+// FIX APPLIED: Delete confirmation with cloud warning
+// FIX APPLIED: Transaction fees calculated from ALL records in cloud
+// FIX APPLIED: Transaction fee captured and added when Save is clicked
+// FIX APPLIED: Improved M-Pesa parsing for "Transaction cost, Ksh57.00" format
+// FIX APPLIED: Fixed fee multiplication issue
+// FIX APPLIED: Fixed fee removal on row deletion
+// FIX APPLIED: Added fee rebuild on load to eliminate phantom fees
+// FIX APPLIED: Fixed session persistence on page refresh
+// FIX APPLIED: Removed column delete button only - kept row and date delete
 
 (function() {
-    "use strict";
+        "use strict";
 
-    // ========================================
-    // 🔥 SUPABASE CONFIG
-    // ========================================
-    const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
+        // ========================================
+        // 🔥 SUPABASE CONFIG
+        // ========================================
+        const SUPABASE_URL = 'https://ujhasodlnduoozlmxdbv.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_DK0i6IuTFcE6_g1P6gG_-A_IkwguvIL';
 
-    let supabaseClient = null;
-    const SYNC_ENABLED = true;
+        let supabaseClient = null;
+        const SYNC_ENABLED = true;
 
-    // ========================================
-    // INITIALIZE SUPABASE
-    // ========================================
-    function initSupabase() {
-        try {
-            if (typeof supabase !== 'undefined') {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                console.log('✅ Supabase initialized');
-                return true;
-            } else {
-                console.log('⏳ Loading Supabase library...');
-                setTimeout(() => {
-                    if (typeof supabase !== 'undefined') {
-                        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                        console.log('✅ Supabase initialized');
-                    }
-                }, 1000);
+        // ========================================
+        // INITIALIZE SUPABASE
+        // ========================================
+        function initSupabase() {
+            try {
+                if (typeof supabase !== 'undefined') {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    console.log('✅ Supabase initialized');
+                    return true;
+                } else {
+                    console.log('⏳ Loading Supabase library...');
+                    setTimeout(() => {
+                        if (typeof supabase !== 'undefined') {
+                            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                            console.log('✅ Supabase initialized');
+                        }
+                    }, 1000);
+                    return false;
+                }
+            } catch (e) {
+                console.error('❌ Supabase error:', e);
                 return false;
             }
-        } catch (e) {
-            console.error('❌ Supabase error:', e);
-            return false;
         }
-    }
 
-    // ========================================
-    // TOAST NOTIFICATIONS
-    // ========================================
-    function showToast(message, type = 'info') {
-        const existing = document.querySelector('.toast-message');
-        if (existing) existing.remove();
+        // ========================================
+        // TOAST NOTIFICATIONS
+        // ========================================
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast-message');
+            if (existing) existing.remove();
 
-        const toast = document.createElement('div');
-        toast.className = 'toast-message';
-        toast.textContent = message;
-        toast.style.cssText = `
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            toast.style.cssText = `
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -65,461 +82,661 @@
             max-width: 90%;
             text-align: center;
         `;
-        document.body.appendChild(toast);
+            document.body.appendChild(toast);
 
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    // ========================================
-    // SUPABASE SYNC FUNCTIONS
-    // ========================================
-    async function syncToCloud(showToastMsg = true) {
-        if (!SYNC_ENABLED || !supabaseClient) {
-            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
-            return;
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        try {
-            data = sortDataByDate(data);
-
-            const store = {
-                data: data,
-                nextDateId: nextDateId,
-                nextRowId: nextRowId,
-                nextColId: nextColId,
-                customColumns: customColumns,
-                savedCustomColumns: savedCustomColumns,
-                savedDates: savedDates,
-                editModes: editModes,
-                lastUpdated: new Date().toISOString()
-            };
-
-            const { error } = await supabaseClient
-                .from('expenditure_data')
-                .upsert({
-                    id: 1,
-                    data: store,
-                    updated_by: currentUser ? currentUser.username : 'anonymous',
-                    last_updated: new Date().toISOString()
-                }, { onConflict: 'id' });
-
-            if (error) {
-                console.error('❌ Sync error:', error);
-                if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
-            } else {
-                console.log('✅ Synced to cloud');
-                if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
+        // ========================================
+        // SUPABASE SYNC FUNCTIONS
+        // ========================================
+        async function syncToCloud(showToastMsg = true) {
+            if (!SYNC_ENABLED || !supabaseClient) {
+                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
+                return;
             }
-        } catch (e) {
-            console.error('❌ Sync error:', e);
-            if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
-        }
-    }
 
-    async function syncFromCloud(showToastMsg = true) {
-        if (!SYNC_ENABLED || !supabaseClient) {
-            if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
-            return false;
-        }
+            try {
+                data = sortDataByDate(data);
 
-        try {
-            console.log('📥 Pulling from cloud...');
+                const store = {
+                    data: data,
+                    nextDateId: nextDateId,
+                    nextRowId: nextRowId,
+                    nextColId: nextColId,
+                    customColumns: customColumns,
+                    savedCustomColumns: savedCustomColumns,
+                    savedDates: savedDates,
+                    editModes: editModes,
+                    columnNameEdits: columnNameEdits,
+                    transactionFees: transactionFees,
+                    totalTransactionFees: totalTransactionFees,
+                    lastUpdated: new Date().toISOString()
+                };
 
-            const { data: result, error } = await supabaseClient
-                .from('expenditure_data')
-                .select('data, updated_by, last_updated')
-                .eq('id', 1)
-                .single();
+                const { error } = await supabaseClient
+                    .from('expenditure_data')
+                    .upsert({
+                        id: 1,
+                        data: store,
+                        updated_by: currentUser ? currentUser.username : 'anonymous',
+                        last_updated: new Date().toISOString()
+                    }, { onConflict: 'id' });
 
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
+                if (error) {
+                    console.error('❌ Sync error:', error);
+                    if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
                 } else {
-                    if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
+                    console.log('✅ Synced to cloud');
+                    if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
                 }
+            } catch (e) {
+                console.error('❌ Sync error:', e);
+                if (showToastMsg) showToast('❌ Sync error: ' + e.message, 'error');
+            }
+        }
+
+        async function syncFromCloud(showToastMsg = true) {
+            if (!SYNC_ENABLED || !supabaseClient) {
+                if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
                 return false;
             }
 
-            if (result && result.data) {
-                const cloudData = result.data;
-
-                data = cloudData.data || data;
-                nextDateId = cloudData.nextDateId || nextDateId;
-                nextRowId = cloudData.nextRowId || nextRowId;
-                nextColId = cloudData.nextColId || nextColId;
-                customColumns = cloudData.customColumns || customColumns;
-                savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
-                savedDates = cloudData.savedDates || savedDates;
-                editModes = cloudData.editModes || editModes;
-
-                data = sortDataByDate(data);
-
-                saveToStorage();
-
-                console.log('✅ Pulled from cloud');
-
-                render();
-                setTimeout(() => {
-                    updateTotalsOnly();
-                    console.log('✅ Totals updated after cloud sync');
-                }, 100);
-
-                if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
-                return true;
-            }
-        } catch (e) {
-            console.error('❌ Pull error:', e);
-            if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
-        }
-        return false;
-    }
-
-    // ========================================
-    // SORT DATA BY DATE (LATEST FIRST)
-    // ========================================
-    function sortDataByDate(dataArray) {
-        if (!dataArray || dataArray.length === 0) return dataArray;
-        return [...dataArray].sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            return dateB - dateA;
-        });
-    }
-
-    // ========================================
-    // USER MANAGEMENT
-    // ========================================
-    const USERS_KEY = 'starlink_users';
-
-    const DEFAULT_USERS = [
-        { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
-        { id: 2, username: 'grace', password: 'grace123', role: 'user' }
-    ];
-
-    function getUsers() {
-        const stored = localStorage.getItem(USERS_KEY);
-        if (stored) {
             try {
-                const users = JSON.parse(stored);
-                if (users && users.length > 0) return users;
-            } catch (e) {}
-        }
-        localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
-        return DEFAULT_USERS;
-    }
+                console.log('📥 Pulling from cloud...');
 
-    function saveUsers(users) {
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
+                const { data: result, error } = await supabaseClient
+                    .from('expenditure_data')
+                    .select('data, updated_by, last_updated')
+                    .eq('id', 1)
+                    .single();
 
-    function findUser(username) {
-        const users = getUsers();
-        return users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    }
+                if (error) {
+                    if (error.code === 'PGRST116') {
+                        if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
+                    } else {
+                        if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
+                    }
+                    return false;
+                }
 
-    function authenticateUser(username, password) {
-        const user = findUser(username);
-        if (user && user.password === password) return user;
-        return null;
-    }
+                if (result && result.data) {
+                    const cloudData = result.data;
 
-    function updateUserPassword(userId, newPassword) {
-        const users = getUsers();
-        const index = users.findIndex(u => u.id === userId);
-        if (index === -1) return false;
-        users[index].password = newPassword;
-        saveUsers(users);
-        return true;
-    }
+                    data = cloudData.data || data;
+                    nextDateId = cloudData.nextDateId || nextDateId;
+                    nextRowId = cloudData.nextRowId || nextRowId;
+                    nextColId = cloudData.nextColId || nextColId;
+                    customColumns = cloudData.customColumns || customColumns;
+                    savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
+                    savedDates = cloudData.savedDates || savedDates;
+                    editModes = cloudData.editModes || editModes;
+                    if (cloudData.columnNameEdits) {
+                        columnNameEdits = cloudData.columnNameEdits;
+                        saveColumnNameEdits();
+                    }
+                    if (cloudData.transactionFees) {
+                        transactionFees = cloudData.transactionFees || {};
+                        totalTransactionFees = cloudData.totalTransactionFees || 0;
+                    }
 
-    function addUser(username, password, role = 'user') {
-        const users = getUsers();
-        if (findUser(username)) return false;
-        const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
-        users.push({ id: maxId + 1, username, password, role });
-        saveUsers(users);
-        return true;
-    }
+                    rebuildFeesFromData();
 
-    function updateUser(id, username, password, role) {
-        const users = getUsers();
-        const index = users.findIndex(u => u.id === id);
-        if (index === -1) return false;
-        const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
-        if (existing) return false;
-        users[index] = {...users[index], username, password, role };
-        saveUsers(users);
-        return true;
-    }
+                    data = sortDataByDate(data);
+                    saveToStorage();
 
-    function deleteUser(id) {
-        const users = getUsers();
-        const filtered = users.filter(u => u.id !== id);
-        if (filtered.length === users.length) return false;
-        saveUsers(filtered);
-        return true;
-    }
+                    console.log('✅ Pulled from cloud');
+                    console.log('📊 Total Transaction Fees:', totalTransactionFees);
 
-    // ========================================
-    // DOM REFS - LOGIN
-    // ========================================
-    const loginScreen = document.getElementById('loginScreen');
-    const forgotScreen = document.getElementById('forgotScreen');
-    const changePasswordScreen = document.getElementById('changePasswordScreen');
-    const mainApp = document.getElementById('mainApp');
-    const usernameInput = document.getElementById('usernameInput');
-    const passwordInput = document.getElementById('passwordInput');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginError = document.getElementById('loginError');
-    const loginSuccess = document.getElementById('loginSuccess');
-    const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-    const backToLoginBtn = document.getElementById('backToLoginBtn');
-    const changePasswordBtn = document.getElementById('changePasswordBtn');
-    const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
-    const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
-    const changePasswordOld = document.getElementById('changePasswordOld');
-    const changePasswordNew = document.getElementById('changePasswordNew');
-    const changePasswordConfirm = document.getElementById('changePasswordConfirm');
-    const changePasswordError = document.getElementById('changePasswordError');
-    const changePasswordSuccess = document.getElementById('changePasswordSuccess');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userDisplay = document.getElementById('userDisplay');
+                    render();
+                    setTimeout(() => {
+                        updateTotalsOnly();
+                        updateTransactionFeesDisplay();
+                        console.log('✅ Totals updated after cloud sync');
+                        console.log('💳 Transaction Fees Displayed:', totalTransactionFees);
+                    }, 100);
 
-    const adminPanelBtn = document.getElementById('adminPanelBtn');
-    const adminPanel = document.getElementById('adminPanel');
-    const adminPanelClose = document.getElementById('adminPanelClose');
-    const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
-    const userList = document.getElementById('userList');
-    const addUserBtn = document.getElementById('addUserBtn');
-
-    const userModal = document.getElementById('userModal');
-    const userModalTitle = document.getElementById('userModalTitle');
-    const userModalUsername = document.getElementById('userModalUsername');
-    const userModalPassword = document.getElementById('userModalPassword');
-    const userModalRole = document.getElementById('userModalRole');
-    const userModalError = document.getElementById('userModalError');
-    const userModalSave = document.getElementById('userModalSave');
-    const userModalCancel = document.getElementById('userModalCancel');
-    const userModalClose = document.getElementById('userModalClose');
-
-    const syncNowBtn = document.getElementById('syncNowBtn');
-
-    let editingUserId = null;
-    let currentUser = null;
-
-    // ========================================
-    // LOGIN FUNCTIONS
-    // ========================================
-    function checkLogin() {
-        const savedUser = sessionStorage.getItem('starlink_user');
-        if (savedUser) {
-            try {
-                currentUser = JSON.parse(savedUser);
-                const users = getUsers();
-                const exists = users.find(u => u.id === currentUser.id);
-                if (exists) {
-                    showMainApp();
+                    if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
                     return true;
                 }
-            } catch (e) {}
-        }
-        return false;
-    }
-
-    function attemptLogin() {
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value.trim();
-
-        if (!username || !password) {
-            loginError.textContent = '❌ Please enter both username and password.';
-            loginError.style.display = 'block';
-            loginSuccess.style.display = 'none';
-            return;
-        }
-
-        const user = authenticateUser(username, password);
-        if (user) {
-            loginError.style.display = 'none';
-            loginSuccess.textContent = '✅ Login successful! Redirecting...';
-            loginSuccess.style.display = 'block';
-            currentUser = user;
-            sessionStorage.setItem('starlink_user', JSON.stringify(user));
-            setTimeout(() => {
-                showMainApp();
-            }, 600);
-        } else {
-            loginSuccess.style.display = 'none';
-            loginError.textContent = '❌ Invalid username or password.';
-            loginError.style.display = 'block';
-            passwordInput.value = '';
-            passwordInput.focus();
-            setTimeout(() => {
-                loginError.style.display = 'none';
-            }, 3000);
-        }
-    }
-
-    function showMainApp() {
-        loginScreen.style.display = 'none';
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'none';
-        mainApp.style.display = 'block';
-        if (userDisplay) {
-            userDisplay.textContent = '👤 ' + currentUser.username;
-        }
-        if (adminPanelBtn) {
-            adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
-        }
-        if (typeof initMainApp === 'function') {
-            initMainApp();
-        }
-    }
-
-    function logout() {
-        sessionStorage.removeItem('starlink_user');
-        currentUser = null;
-        mainApp.style.display = 'none';
-        loginScreen.style.display = 'flex';
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'none';
-        usernameInput.value = '';
-        passwordInput.value = '';
-        loginError.style.display = 'none';
-        loginSuccess.style.display = 'none';
-        usernameInput.focus();
-    }
-
-    function showForgotScreen() {
-        loginScreen.style.display = 'none';
-        forgotScreen.style.display = 'flex';
-        changePasswordScreen.style.display = 'none';
-        const forgotUsername = document.getElementById('forgotUsername');
-        if (forgotUsername) forgotUsername.focus();
-    }
-
-    function showChangePasswordScreen() {
-        loginScreen.style.display = 'none';
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'flex';
-        changePasswordOld.value = '';
-        changePasswordNew.value = '';
-        changePasswordConfirm.value = '';
-        changePasswordError.style.display = 'none';
-        changePasswordSuccess.style.display = 'none';
-        changePasswordOld.focus();
-    }
-
-    function showLoginScreen() {
-        forgotScreen.style.display = 'none';
-        changePasswordScreen.style.display = 'none';
-        loginScreen.style.display = 'flex';
-        usernameInput.focus();
-    }
-
-    function handleChangePassword() {
-        const oldPassword = changePasswordOld.value.trim();
-        const newPassword = changePasswordNew.value.trim();
-        const confirmPassword = changePasswordConfirm.value.trim();
-
-        changePasswordError.style.display = 'none';
-        changePasswordSuccess.style.display = 'none';
-
-        if (!oldPassword || !newPassword || !confirmPassword) {
-            changePasswordError.textContent = '❌ Please fill in all fields.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (oldPassword !== currentUser.password) {
-            changePasswordError.textContent = '❌ Old password is incorrect.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (newPassword !== confirmPassword) {
-            changePasswordError.textContent = '❌ New passwords do not match.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (newPassword.length < 4) {
-            changePasswordError.textContent = '❌ New password must be at least 4 characters.';
-            changePasswordError.style.display = 'block';
-            return;
-        }
-
-        if (updateUserPassword(currentUser.id, newPassword)) {
-            currentUser.password = newPassword;
-            sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
-            changePasswordSuccess.textContent = '✅ Password changed successfully!';
-            changePasswordSuccess.style.display = 'block';
-            setTimeout(() => {
-                showLoginScreen();
-            }, 2000);
-        } else {
-            changePasswordError.textContent = '❌ Failed to update password.';
-            changePasswordError.style.display = 'block';
-        }
-    }
-
-    function handleForgotPassword() {
-        const forgotUsername = document.getElementById('forgotUsername');
-        const forgotError = document.getElementById('forgotError');
-        const forgotSuccess = document.getElementById('forgotSuccess');
-
-        if (!forgotUsername) return;
-
-        const username = forgotUsername.value.trim();
-        forgotError.style.display = 'none';
-        forgotSuccess.style.display = 'none';
-
-        if (!username) {
-            forgotError.textContent = '❌ Please enter your username.';
-            forgotError.style.display = 'block';
-            return;
-        }
-
-        const user = findUser(username);
-        if (user) {
-            if (currentUser && currentUser.role === 'admin') {
-                forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
-            } else {
-                forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
+            } catch (e) {
+                console.error('❌ Pull error:', e);
+                if (showToastMsg) showToast('❌ Pull error: ' + e.message, 'error');
             }
-            forgotSuccess.style.display = 'block';
-            setTimeout(() => {
-                showLoginScreen();
-            }, 3000);
-        } else {
-            forgotError.textContent = '❌ Username not found.';
-            forgotError.style.display = 'block';
-            setTimeout(() => {
-                forgotError.style.display = 'none';
-            }, 3000);
-        }
-    }
-
-    // ========================================
-    // ADMIN PANEL
-    // ========================================
-    function renderUserList() {
-        const users = getUsers();
-        if (!userList) return;
-
-        if (users.length === 0) {
-            userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
-            return;
+            return false;
         }
 
-        let html = '';
-        users.forEach(user => {
-            const isCurrent = currentUser && currentUser.id === user.id;
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            html += `
+        // ========================================
+        // REBUILD FEES FROM DATA
+        // ========================================
+        function rebuildFeesFromData() {
+            console.log('🔄 Rebuilding fees from data...');
+            transactionFees = {};
+            totalTransactionFees = 0;
+
+            const allCols = getAllColumns();
+
+            data.forEach(group => {
+                group.rows.forEach(row => {
+                    let rowFee = null;
+                    allCols.forEach(col => {
+                        const transKey = col.key + '_transaction';
+                        const transVal = row[transKey];
+                        if (transVal && transVal.trim() !== '') {
+                            const parsed = parseMpesaMessage(transVal);
+                            if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
+                                rowFee = parsed.transactionCost;
+                            }
+                        }
+                    });
+                    if (rowFee !== null && rowFee > 0) {
+                        const key = group.id + '_' + row.id;
+                        transactionFees[key] = rowFee;
+                        console.log(`✅ Fee found: KSh ${rowFee} for row ${row.id}`);
+                    }
+                });
+            });
+
+            recalculateTotalFees();
+            console.log('📊 Total Transaction Fees after rebuild:', totalTransactionFees);
+            updateTransactionFeesDisplay();
+            saveToStorage();
+            return totalTransactionFees;
+        }
+
+        // ========================================
+        // CHECK FOR DUPLICATE TRANSACTION MESSAGES
+        // ========================================
+        function checkForDuplicateTransactions(dateId) {
+            const group = data.find(d => d.id === dateId);
+            if (!group) return null;
+
+            const allCols = getAllColumns();
+            const transactionCodes = [];
+
+            group.rows.forEach(row => {
+                allCols.forEach(col => {
+                    const transKey = col.key + '_transaction';
+                    const transVal = row[transKey];
+                    if (transVal && transVal.trim() !== '') {
+                        const parsed = parseMpesaMessage(transVal);
+                        if (parsed && parsed.transactionCode) {
+                            transactionCodes.push({
+                                rowId: row.id,
+                                code: parsed.transactionCode
+                            });
+                        }
+                    }
+                });
+            });
+
+            const codeMap = {};
+            for (let item of transactionCodes) {
+                if (codeMap[item.code]) {
+                    return item.code;
+                }
+                codeMap[item.code] = item.rowId;
+            }
+            return null;
+        }
+
+        // ========================================
+        // SORT DATA BY DATE (LATEST FIRST)
+        // ========================================
+        function sortDataByDate(dataArray) {
+            if (!dataArray || dataArray.length === 0) return dataArray;
+            return [...dataArray].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateB - dateA;
+            });
+        }
+
+        // ========================================
+        // USER MANAGEMENT
+        // ========================================
+        const USERS_KEY = 'starlink_users';
+
+        const DEFAULT_USERS = [
+            { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
+            { id: 2, username: 'grace', password: 'grace123', role: 'user' }
+        ];
+
+        function getUsers() {
+            const stored = localStorage.getItem(USERS_KEY);
+            if (stored) {
+                try {
+                    const users = JSON.parse(stored);
+                    if (users && users.length > 0) {
+                        return users;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Failed to parse users from localStorage:', e);
+                }
+            }
+            localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+            return DEFAULT_USERS;
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            console.log('✅ Users saved to localStorage:', users.length, 'users');
+            return true;
+        }
+
+        function findUser(username) {
+            const users = getUsers();
+            return users.find(u => u.username.toLowerCase() === username.toLowerCase());
+        }
+
+        function authenticateUser(username, password) {
+            const users = getUsers();
+            console.log('🔍 Authenticating user:', username);
+
+            const user = users.find(u =>
+                u.username.toLowerCase() === username.toLowerCase() &&
+                u.password === password
+            );
+
+            if (user) {
+                console.log('✅ User authenticated:', user.username);
+            } else {
+                console.log('❌ Authentication failed for:', username);
+            }
+            return user || null;
+        }
+
+        function updateUserPassword(userId, newPassword) {
+            console.log('🔍 Looking for user with ID:', userId);
+
+            const users = getUsers();
+            const index = users.findIndex(u => u.id === userId);
+            if (index === -1) {
+                console.error('❌ User not found with ID:', userId);
+                return false;
+            }
+
+            console.log('✅ User found:', users[index].username);
+            users[index].password = newPassword;
+            saveUsers(users);
+            console.log('✅ Password updated for user:', users[index].username);
+            return true;
+        }
+
+        function addUser(username, password, role = 'user') {
+            const users = getUsers();
+            if (findUser(username)) {
+                console.warn('⚠️ Username already exists:', username);
+                return false;
+            }
+            const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
+            const newUser = { id: maxId + 1, username, password, role };
+            users.push(newUser);
+            saveUsers(users);
+            console.log('✅ User added:', username, 'Role:', role);
+            return true;
+        }
+
+        function updateUser(id, username, password, role) {
+            const users = getUsers();
+            const index = users.findIndex(u => u.id === id);
+            if (index === -1) {
+                console.error('❌ User not found with ID:', id);
+                return false;
+            }
+            const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
+            if (existing) {
+                console.warn('⚠️ Username already exists:', username);
+                return false;
+            }
+            users[index] = {...users[index], username, password, role };
+            saveUsers(users);
+            console.log('✅ User updated:', username);
+            return true;
+        }
+
+        function deleteUser(id) {
+            const users = getUsers();
+            const filtered = users.filter(u => u.id !== id);
+            if (filtered.length === users.length) {
+                console.warn('⚠️ User not found with ID:', id);
+                return false;
+            }
+            saveUsers(filtered);
+            console.log('✅ User deleted with ID:', id);
+            return true;
+        }
+
+        // ========================================
+        // DOM REFS - LOGIN
+        // ========================================
+        const loginScreen = document.getElementById('loginScreen');
+        const forgotScreen = document.getElementById('forgotScreen');
+        const changePasswordScreen = document.getElementById('changePasswordScreen');
+        const mainApp = document.getElementById('mainApp');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const loginSuccess = document.getElementById('loginSuccess');
+        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const backToLoginBtn = document.getElementById('backToLoginBtn');
+        const changePasswordBtn = document.getElementById('changePasswordBtn');
+        const changePasswordBackBtn = document.getElementById('changePasswordBackBtn');
+        const changePasswordSaveBtn = document.getElementById('changePasswordSaveBtn');
+        const changePasswordOld = document.getElementById('changePasswordOld');
+        const changePasswordNew = document.getElementById('changePasswordNew');
+        const changePasswordConfirm = document.getElementById('changePasswordConfirm');
+        const changePasswordError = document.getElementById('changePasswordError');
+        const changePasswordSuccess = document.getElementById('changePasswordSuccess');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userDisplay = document.getElementById('userDisplay');
+
+        const adminPanelBtn = document.getElementById('adminPanelBtn');
+        const adminPanel = document.getElementById('adminPanel');
+        const adminPanelClose = document.getElementById('adminPanelClose');
+        const adminPanelCloseBtn = document.getElementById('adminPanelCloseBtn');
+        const userList = document.getElementById('userList');
+        const addUserBtn = document.getElementById('addUserBtn');
+
+        const userModal = document.getElementById('userModal');
+        const userModalTitle = document.getElementById('userModalTitle');
+        const userModalUsername = document.getElementById('userModalUsername');
+        const userModalPassword = document.getElementById('userModalPassword');
+        const userModalRole = document.getElementById('userModalRole');
+        const userModalError = document.getElementById('userModalError');
+        const userModalSave = document.getElementById('userModalSave');
+        const userModalCancel = document.getElementById('userModalCancel');
+        const userModalClose = document.getElementById('userModalClose');
+
+        const syncNowBtn = document.getElementById('syncNowBtn');
+
+        let editingUserId = null;
+        let currentUser = null;
+
+        // ========================================
+        // LOGIN FUNCTIONS
+        // ========================================
+        function checkLogin() {
+            const savedUser = sessionStorage.getItem('starlink_user');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    const users = getUsers();
+                    const exists = users.find(u => u.id === currentUser.id);
+                    if (exists) {
+                        console.log('✅ Session restored for user:', currentUser.username);
+                        showMainApp();
+                        return true;
+                    } else {
+                        sessionStorage.removeItem('starlink_user');
+                        currentUser = null;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Invalid session data:', e);
+                    sessionStorage.removeItem('starlink_user');
+                    currentUser = null;
+                }
+            }
+            return false;
+        }
+
+        function attemptLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!username || !password) {
+                loginError.textContent = '❌ Please enter both username and password.';
+                loginError.style.display = 'block';
+                loginSuccess.style.display = 'none';
+                return;
+            }
+
+            const user = authenticateUser(username, password);
+            if (user) {
+                loginError.style.display = 'none';
+                loginSuccess.textContent = '✅ Login successful! Redirecting...';
+                loginSuccess.style.display = 'block';
+                currentUser = user;
+                sessionStorage.setItem('starlink_user', JSON.stringify(user));
+                console.log('✅ User logged in:', user.username, 'Role:', user.role);
+                console.log('✅ Session saved to sessionStorage');
+                setTimeout(() => {
+                    showMainApp();
+                }, 600);
+            } else {
+                loginSuccess.style.display = 'none';
+                loginError.textContent = '❌ Invalid username or password.';
+                loginError.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
+                setTimeout(() => {
+                    loginError.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function showMainApp() {
+            loginScreen.style.display = 'none';
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'none';
+            mainApp.style.display = 'block';
+            if (userDisplay) {
+                userDisplay.textContent = '👤 ' + currentUser.username;
+            }
+            if (adminPanelBtn) {
+                adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+            }
+            // Make sure currentUser is saved in session
+            if (currentUser) {
+                sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
+            }
+            if (typeof initMainApp === 'function') {
+                initMainApp();
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('starlink_user');
+            currentUser = null;
+            mainApp.style.display = 'none';
+            loginScreen.style.display = 'flex';
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'none';
+            usernameInput.value = '';
+            passwordInput.value = '';
+            loginError.style.display = 'none';
+            loginSuccess.style.display = 'none';
+            usernameInput.focus();
+            console.log('🚪 User logged out');
+        }
+
+        function showForgotScreen() {
+            loginScreen.style.display = 'none';
+            forgotScreen.style.display = 'flex';
+            changePasswordScreen.style.display = 'none';
+            const forgotUsername = document.getElementById('forgotUsername');
+            if (forgotUsername) forgotUsername.focus();
+        }
+
+        function showChangePasswordScreen() {
+            loginScreen.style.display = 'none';
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'flex';
+            changePasswordOld.value = '';
+            changePasswordNew.value = '';
+            changePasswordConfirm.value = '';
+            changePasswordError.style.display = 'none';
+            changePasswordSuccess.style.display = 'none';
+            changePasswordOld.focus();
+        }
+
+        function showLoginScreen() {
+            forgotScreen.style.display = 'none';
+            changePasswordScreen.style.display = 'none';
+            loginScreen.style.display = 'flex';
+            usernameInput.focus();
+        }
+
+        // ========================================
+        // FIXED: HANDLE CHANGE PASSWORD
+        // ========================================
+        function handleChangePassword() {
+            console.log('🔑 Change password button clicked');
+
+            try {
+                const oldPassword = changePasswordOld.value.trim();
+                const newPassword = changePasswordNew.value.trim();
+                const confirmPassword = changePasswordConfirm.value.trim();
+
+                changePasswordError.style.display = 'none';
+                changePasswordSuccess.style.display = 'none';
+
+                if (!oldPassword || !newPassword || !confirmPassword) {
+                    changePasswordError.textContent = '❌ Please fill in all fields.';
+                    changePasswordError.style.display = 'block';
+                    console.log('❌ Empty fields detected');
+                    return;
+                }
+
+                let targetUser = currentUser;
+                if (!targetUser) {
+                    const typedUsername = (usernameInput && usernameInput.value.trim()) || '';
+                    if (!typedUsername) {
+                        changePasswordError.textContent = '❌ Enter your username on the login screen first, then click "Change Password".';
+                        changePasswordError.style.display = 'block';
+                        console.log('❌ No username available to resolve target user');
+                        return;
+                    }
+                    targetUser = findUser(typedUsername);
+                    if (!targetUser) {
+                        changePasswordError.textContent = '❌ Username not found.';
+                        changePasswordError.style.display = 'block';
+                        console.log('❌ Username not found:', typedUsername);
+                        return;
+                    }
+                } else {
+                    const freshUser = findUser(currentUser.username);
+                    if (freshUser) targetUser = freshUser;
+                }
+
+                if (oldPassword !== targetUser.password) {
+                    changePasswordError.textContent = '❌ Old password is incorrect.';
+                    changePasswordError.style.display = 'block';
+                    changePasswordOld.value = '';
+                    changePasswordOld.focus();
+                    console.log('❌ Old password incorrect');
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    changePasswordError.textContent = '❌ New passwords do not match.';
+                    changePasswordError.style.display = 'block';
+                    changePasswordNew.value = '';
+                    changePasswordConfirm.value = '';
+                    changePasswordNew.focus();
+                    console.log('❌ New passwords do not match');
+                    return;
+                }
+
+                if (newPassword.length < 4) {
+                    changePasswordError.textContent = '❌ New password must be at least 4 characters.';
+                    changePasswordError.style.display = 'block';
+                    console.log('❌ Password too short');
+                    return;
+                }
+
+                console.log('🔄 Attempting to update password for user ID:', targetUser.id);
+                const success = updateUserPassword(targetUser.id, newPassword);
+
+                if (success) {
+                    if (currentUser && currentUser.id === targetUser.id) {
+                        currentUser.password = newPassword;
+                        sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
+                    }
+
+                    changePasswordSuccess.textContent = '✅ Password changed successfully!';
+                    changePasswordSuccess.style.display = 'block';
+                    console.log('✅ Password changed for user:', targetUser.username);
+
+                    changePasswordOld.value = '';
+                    changePasswordNew.value = '';
+                    changePasswordConfirm.value = '';
+
+                    setTimeout(() => {
+                        showToast('✅ Password changed successfully!', 'success');
+                        showLoginScreen();
+                    }, 1500);
+                } else {
+                    changePasswordError.textContent = '❌ Failed to update password. Please try again.';
+                    changePasswordError.style.display = 'block';
+                    console.error('❌ Failed to update password for user:', targetUser.username);
+                }
+            } catch (err) {
+                console.error('❌ Unexpected error in handleChangePassword:', err);
+                changePasswordError.textContent = '❌ Something went wrong. Please try again.';
+                changePasswordError.style.display = 'block';
+            }
+        }
+
+        function handleForgotPassword() {
+            const forgotUsername = document.getElementById('forgotUsername');
+            const forgotError = document.getElementById('forgotError');
+            const forgotSuccess = document.getElementById('forgotSuccess');
+
+            if (!forgotUsername) return;
+
+            const username = forgotUsername.value.trim();
+            forgotError.style.display = 'none';
+            forgotSuccess.style.display = 'none';
+
+            if (!username) {
+                forgotError.textContent = '❌ Please enter your username.';
+                forgotError.style.display = 'block';
+                return;
+            }
+
+            const user = findUser(username);
+            if (user) {
+                if (currentUser && currentUser.role === 'admin') {
+                    forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
+                } else {
+                    forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
+                }
+                forgotSuccess.style.display = 'block';
+                setTimeout(() => {
+                    showLoginScreen();
+                }, 3000);
+            } else {
+                forgotError.textContent = '❌ Username not found.';
+                forgotError.style.display = 'block';
+                setTimeout(() => {
+                    forgotError.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // ========================================
+        // ADMIN PANEL
+        // ========================================
+        function renderUserList() {
+            const users = getUsers();
+            if (!userList) return;
+
+            if (users.length === 0) {
+                userList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim);">No users found.</div>';
+                return;
+            }
+
+            let html = '';
+            users.forEach(user => {
+                        const isCurrent = currentUser && currentUser.id === user.id;
+                        const isAdmin = currentUser && currentUser.role === 'admin';
+                        html += `
                 <div class="user-item ${isCurrent ? 'current-user' : ''}">
                     <div class="user-info">
                         <span class="user-icon">${user.role === 'admin' ? '👑' : '👤'}</span>
@@ -561,6 +778,7 @@
                             if (currentUser && currentUser.id === id) {
                                 logout();
                             }
+                            showToast('✅ User deleted successfully', 'success');
                         }
                     }
                 });
@@ -618,6 +836,12 @@
             return;
         }
 
+        if (password.length < 4) {
+            userModalError.textContent = '❌ Password must be at least 4 characters.';
+            userModalError.style.display = 'block';
+            return;
+        }
+
         if (editingUserId) {
             const users = getUsers();
             const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== editingUserId);
@@ -636,11 +860,16 @@
                 }
                 closeUserModal();
                 renderUserList();
+                showToast('✅ User updated successfully', 'success');
+            } else {
+                userModalError.textContent = '❌ Failed to update user.';
+                userModalError.style.display = 'block';
             }
         } else {
             if (addUser(username, password, role)) {
                 closeUserModal();
                 renderUserList();
+                showToast('✅ User added successfully', 'success');
             } else {
                 userModalError.textContent = '❌ Username already exists.';
                 userModalError.style.display = 'block';
@@ -653,6 +882,170 @@
     // ========================================
     function userCanEdit() {
         return currentUser && currentUser.role === 'admin';
+    }
+
+    // ========================================
+    // EDITABLE COLUMN NAMES - ALL COLUMNS
+    // ========================================
+    let columnNameEdits = {};
+
+    function loadColumnNameEdits() {
+        try {
+            const saved = localStorage.getItem('starlink_column_names');
+            if (saved) {
+                columnNameEdits = JSON.parse(saved);
+                console.log('✅ Column name edits loaded:', columnNameEdits);
+            }
+        } catch (e) {
+            console.warn('⚠️ Failed to load column name edits:', e);
+        }
+    }
+
+    function saveColumnNameEdits() {
+        try {
+            localStorage.setItem('starlink_column_names', JSON.stringify(columnNameEdits));
+            console.log('✅ Column name edits saved:', columnNameEdits);
+        } catch (e) {
+            console.warn('⚠️ Failed to save column name edits:', e);
+        }
+    }
+
+    function getColumnLabel(col) {
+        if (columnNameEdits[col.key]) {
+            return columnNameEdits[col.key];
+        }
+        return col.label;
+    }
+
+    function editColumnName(colKey) {
+        const allCols = getAllColumns();
+        const col = allCols.find(c => c.key === colKey);
+        if (!col) {
+            showToast('❌ Column not found', 'error');
+            return;
+        }
+
+        const currentName = columnNameEdits[colKey] || col.label;
+        const newName = prompt('Enter new column name:', currentName);
+        if (newName === null) return;
+        if (!newName.trim()) {
+            showToast('❌ Column name cannot be empty', 'error');
+            return;
+        }
+
+        columnNameEdits[colKey] = newName.trim().toUpperCase();
+        saveColumnNameEdits();
+
+        col.label = newName.trim().toUpperCase();
+
+        render();
+        showToast('✅ Column name updated to: ' + newName.trim().toUpperCase(), 'success');
+        scheduleCloudSync();
+    }
+
+    // ========================================
+    // M-PESA MESSAGE PARSING
+    // ========================================
+    function parseMpesaMessage(message) {
+        if (!message || message.trim() === '') return null;
+
+        const result = {
+            amount: null,
+            date: null,
+            time: null,
+            transactionCost: null,
+            fullMessage: message,
+            transactionCode: null
+        };
+
+        const codeMatch = message.match(/^([A-Z0-9]+)/);
+        if (codeMatch) {
+            result.transactionCode = codeMatch[1];
+            console.log('🔑 Transaction code extracted:', result.transactionCode);
+        }
+
+        const amountMatch = message.match(/(?:KSh|KES|Ksh|ksh)\s*([\d,]+\.?\d*)\s*(?:sent|received|to|from)?/i);
+        if (amountMatch) {
+            result.amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+            console.log('💰 Amount extracted:', result.amount);
+        }
+
+        const feeMatch = message.match(/Transaction\s+cost[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
+        if (feeMatch) {
+            result.transactionCost = parseFloat(feeMatch[1].replace(/,/g, ''));
+            console.log('💳 Transaction fee extracted:', result.transactionCost);
+        }
+
+        if (result.transactionCost === null) {
+            const altFeeMatch = message.match(/(?:Fee|Charge|Cost)[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
+            if (altFeeMatch) {
+                result.transactionCost = parseFloat(altFeeMatch[1].replace(/,/g, ''));
+                console.log('💳 Transaction fee extracted (alt):', result.transactionCost);
+            }
+        }
+
+        const dateMatch = message.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
+        if (dateMatch) {
+            result.date = dateMatch[1];
+            console.log('📅 Date extracted:', result.date);
+        }
+
+        const timeMatch = message.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)?/i);
+        if (timeMatch) {
+            result.time = timeMatch[1];
+            console.log('🕐 Time extracted:', result.time);
+        }
+
+        return result;
+    }
+
+    // ========================================
+    // TRANSACTION FEES TRACKING
+    // ========================================
+    let transactionFees = {};
+    let totalTransactionFees = 0;
+
+    function updateTransactionFeesDisplay() {
+        const feesTotalEl = document.getElementById('transactionFeesTotal');
+        if (feesTotalEl) {
+            feesTotalEl.textContent = totalTransactionFees.toFixed(2);
+            console.log('💳 Transaction Fees Display Updated:', totalTransactionFees.toFixed(2));
+        }
+    }
+
+    function addTransactionFee(dateId, rowId, feeAmount) {
+        if (!feeAmount || feeAmount <= 0) {
+            const key = dateId + '_' + rowId;
+            if (transactionFees[key]) {
+                delete transactionFees[key];
+                console.log('🗑️ Fee removed for row:', key);
+            }
+            recalculateTotalFees();
+            updateTransactionFeesDisplay();
+            saveToStorage();
+            return;
+        }
+        const key = dateId + '_' + rowId;
+        transactionFees[key] = feeAmount;
+        recalculateTotalFees();
+        updateTransactionFeesDisplay();
+        saveToStorage();
+        scheduleCloudSync();
+        console.log('💳 Transaction fee added: KSh', feeAmount, 'Total:', totalTransactionFees);
+    }
+
+    function recalculateTotalFees() {
+        totalTransactionFees = 0;
+        for (let key in transactionFees) {
+            totalTransactionFees += transactionFees[key];
+        }
+        console.log('📊 Total Transaction Fees Recalculated:', totalTransactionFees);
+        return totalTransactionFees;
+    }
+
+    function getTransactionFee(dateId, rowId) {
+        const key = dateId + '_' + rowId;
+        return transactionFees[key] || 0;
     }
 
     // ========================================
@@ -699,6 +1092,8 @@
 
     const themeToggle = document.getElementById('themeToggle');
 
+    loadColumnNameEdits();
+
     // ========================================
     // THEME TOGGLE
     // ========================================
@@ -732,7 +1127,13 @@
     // ========================================
     
     function getAllColumns() {
-        return [...DEFAULT_COLUMNS, ...customColumns, ...savedCustomColumns];
+        const cols = [...DEFAULT_COLUMNS, ...customColumns, ...savedCustomColumns];
+        return cols.map(col => {
+            if (columnNameEdits[col.key]) {
+                return { ...col, label: columnNameEdits[col.key] };
+            }
+            return col;
+        });
     }
 
     function isNumericColumn(colKey) {
@@ -934,13 +1335,20 @@
         }
     }
 
+    // ========================================
+    // SAVE DATE ENTRY - WITH DUPLICATE CHECK
+    // ========================================
     function saveDateEntry(dateId) {
         const group = data.find(d => d.id === dateId);
         if (!group) return;
 
-        savedDates[dateId] = true;
-        editModes[dateId] = false;
-        render();
+        // Check for duplicate transactions
+        const duplicateCode = checkForDuplicateTransactions(dateId);
+        if (duplicateCode) {
+            showToast(`❌ Save error: Duplicate transaction message found! Transaction code: ${duplicateCode}`, 'error');
+            console.log('❌ Duplicate transaction detected:', duplicateCode);
+            return;
+        }
 
         const saveBtn = document.querySelector(`.save-btn[data-date-id="${dateId}"]`);
         if (saveBtn) {
@@ -951,7 +1359,62 @@
                 saveBtn.classList.remove('saved');
             }, 2000);
         }
+
+        let feesCapturedCount = 0;
+        let feesCapturedTotal = 0;
+        const allCols = getAllColumns();
+
+        const keysToRemove = [];
+        for (let key in transactionFees) {
+            if (key.startsWith(dateId + '_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => {
+            delete transactionFees[key];
+        });
+        console.log('🗑️ Cleared existing fees for date:', dateId);
+
+        group.rows.forEach(row => {
+            let rowFee = null;
+            allCols.forEach(col => {
+                const transKey = col.key + '_transaction';
+                const transVal = row[transKey];
+                if (transVal && transVal.trim() !== '') {
+                    console.log('🔍 Processing transaction:', transVal.substring(0, 80) + '...');
+                    const parsed = parseMpesaMessage(transVal);
+                    if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
+                        rowFee = parsed.transactionCost;
+                        console.log('✅ Fee found: KSh', rowFee);
+                    }
+                }
+            });
+            
+            if (rowFee !== null && rowFee > 0) {
+                const key = dateId + '_' + row.id;
+                transactionFees[key] = rowFee;
+                feesCapturedCount++;
+                feesCapturedTotal += rowFee;
+                console.log('✅ Fee captured for row', row.id, ':', rowFee);
+            }
+            delete row._pendingFee;
+        });
+
+        recalculateTotalFees();
+        updateTransactionFeesDisplay();
+
+        savedDates[dateId] = true;
+        editModes[dateId] = false;
+
+        render();
+        saveToStorage();
         scheduleCloudSync();
+
+        if (feesCapturedCount > 0) {
+            showToast(`✅ Date saved! ${feesCapturedCount} fee(s) captured: KSh ${feesCapturedTotal.toFixed(2)}`, 'success');
+        } else {
+            showToast('✅ Date saved successfully!', 'success');
+        }
     }
 
     function editDateEntry(dateId) {
@@ -968,7 +1431,7 @@
 
     function openReadMoreModal(text) {
         if (!modal) return;
-        modalBody.innerHTML = `<p class="modal-text" style="white-space:pre-wrap; word-wrap:break-word; line-height:1.8;">${text}</p>`;
+        modalBody.innerHTML = `<p class="modal-text">${text}</p>`;
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
     }
@@ -1029,6 +1492,25 @@
         if (!row) return;
 
         row[key] = value;
+        
+        if (key.endsWith('_transaction') && value && value.length > 5) {
+            console.log('📨 Transaction message detected:', value.substring(0, 80) + '...');
+            const parsed = parseMpesaMessage(value);
+            if (parsed) {
+                if (parsed.amount !== null && parsed.amount > 0) {
+                    const amountKey = key.replace('_transaction', '_amount');
+                    row[amountKey] = parsed.amount.toString();
+                    console.log('💰 Amount auto-filled:', parsed.amount);
+                    showToast('💰 Amount extracted: KSh ' + parsed.amount.toFixed(2), 'success');
+                }
+                if (parsed.transactionCost !== null && parsed.transactionCost > 0) {
+                    row._pendingFee = parsed.transactionCost;
+                    console.log('💳 Transaction fee detected (will be added on Save):', parsed.transactionCost);
+                    showToast('💳 Transaction fee detected: KSh ' + parsed.transactionCost.toFixed(2) + ' (click Save to capture)', 'info');
+                }
+            }
+        }
+        
         updateTotalsOnly();
         debouncedSave();
         
@@ -1088,6 +1570,10 @@
                 lastCell.textContent = totalColSum.toFixed(2);
             }
         }
+        
+        recalculateTotalFees();
+        updateTransactionFeesDisplay();
+        console.log('💳 Fees updated in totals:', totalTransactionFees);
     }
 
     // ========================================
@@ -1104,7 +1590,20 @@
     }
 
     // ========================================
-    // RENDER - FIXED WITH CLICKABLE DESCRIPTIONS
+    // SETUP COLUMN NAME EDIT LISTENERS
+    // ========================================
+    function setupColumnNameEditListeners() {
+        document.querySelectorAll('.edit-name-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const colKey = this.dataset.colKey;
+                editColumnName(colKey);
+            });
+        });
+    }
+
+    // ========================================
+    // RENDER - REMOVED COLUMN DELETE BUTTON ONLY
     // ========================================
     function render() {
         const filtered = getFilteredData();
@@ -1127,7 +1626,6 @@
                 const isEditing = editModes[group.id] || false;
                 const showEditMode = isEditing || !isSaved;
 
-                // DATE HEADER ROW
                 html += `<tr class="date-header-row">`;
                 html += `<td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
                 html += `<div class="date-label">
@@ -1137,22 +1635,28 @@
                 html += `</td>`;
                 html += `</tr>`;
 
-                // COLUMN HEADERS - REPEAT FOR EACH DATE
                 html += `<tr class="date-column-header">`;
-                html += `<td style="min-width:80px; font-weight:700; color:var(--accent-brass); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--table-header);">COLUMNS</td>`;
+                html += `<td style="min-width:80px; font-weight:700; color:var(--accent-brass); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--table-header);"></td>`;
                 allColumns.forEach(col => {
                     const isCustom = col.isCustom || false;
-                    const isSaved = col.isSaved || false;
-                    html += `<td style="min-width:120px; text-align:center; font-weight:700; font-size:0.75rem; color:var(--accent-brass); background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}">
-                        ${col.label}
-                        ${isCustom ? `<br><span style="font-weight:400; font-size:0.55rem; color:#c89a5b;">${isSaved ? '(saved)' : '(temp)'}</span>` : ''}
+                    const isSavedCol = col.isSaved || false;
+                    const colKey = col.key;
+                    const colLabel = getColumnLabel(col);
+                    
+                    html += `<td style="min-width:120px; text-align:center; background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}" data-col-key="${colKey}">
+                        <div class="col-header-with-edit">
+                            <span class="col-label" data-col-key="${colKey}" data-label="${colLabel}">${colLabel}</span>
+                            ${isCustom ? `<span style="font-weight:400; font-size:0.55rem; color:#c89a5b;">${isSavedCol ? '(saved)' : '(temp)'}</span>` : ''}
+                            ${canEdit ? `<div class="col-edit-actions">
+                                <button class="edit-name-btn" data-col-key="${colKey}" title="Edit column name">✏️</button>
+                            </div>` : ''}
+                        </div>
                     </td>`;
                 });
                 html += `<td style="min-width:70px; text-align:center; font-weight:700; color:var(--accent-brass); background:var(--table-header);">TOTAL</td>`;
                 html += `<td style="min-width:40px; background:var(--table-header);"></td>`;
                 html += `</tr>`;
 
-                // DATA ROWS
                 if (group.rows.length === 0) {
                     html += `<tr><td colspan="${allColumns.length + 3}" style="text-align:center; padding:16px; color:var(--text-dim); background:var(--bg-card);">
                         No transactions — click "Add Row" to add
@@ -1172,6 +1676,7 @@
                             const descKey = col.key + '_desc';
                             const transKey = col.key + '_transaction';
                             const amountKey = col.key + '_amount';
+                            const colLabel = getColumnLabel(col);
 
                             const descVal = row[descKey] || '';
                             const transVal = row[transKey] || '';
@@ -1180,10 +1685,10 @@
                             let descDisplay = '';
                             if (showEditMode && canEdit) {
                                 descDisplay = `
-                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="2">${descVal}</textarea>
+                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${descVal}</textarea>
                                 `;
                             } else {
-                                const truncated = truncateText(descVal, 4);
+                                const truncated = truncateText(descVal, 3);
                                 if (truncated.needsReadMore) {
                                     descDisplay = `
                                         <div class="desc-display" data-full-text="${descVal.replace(/"/g, '&quot;')}">
@@ -1200,43 +1705,21 @@
                                 }
                             }
 
-                            let transDisplay = '';
-                            if (showEditMode && canEdit) {
-                                transDisplay = `
-                                    <textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="2">${transVal}</textarea>
-                                `;
-                            } else {
-                                const truncated = truncateText(transVal, 4);
-                                if (truncated.needsReadMore) {
-                                    transDisplay = `
-                                        <div class="desc-display" data-full-text="${transVal.replace(/"/g, '&quot;')}" data-type="transaction">
-                                            <span class="short-text">${truncated.short}</span>
-                                            <button class="read-more-btn" data-full-text="${transVal.replace(/"/g, '&quot;')}">readmore</button>
-                                        </div>
-                                    `;
-                                } else {
-                                    transDisplay = `
-                                        <div class="desc-display" data-full-text="${transVal.replace(/"/g, '&quot;')}" data-type="transaction">
-                                            ${transVal || '-'}
-                                        </div>
-                                    `;
-                                }
-                            }
-
-                            html += `<td style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${col.label}">
+                            html += `<td class="expenditure-cell" style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${colLabel}">
                                 <div class="column-group ${isCustom ? 'custom-column' : ''}">
                                     <span class="field-header">Description</span>
                                     ${descDisplay}
                                     <span class="field-header">Transaction Reference</span>
-                                    ${transDisplay}
+                                    ${showEditMode && canEdit ? 
+                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1">${transVal}</textarea>` : 
+                                        `<div class="desc-display">${transVal || '-'}</div>`}
                                     <span class="field-header">Amount</span>
                                     ${showEditMode && canEdit ? 
                                         `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
-                                        `<div class="desc-display" style="font-weight:700; text-align:right; color:var(--accent-teal);">${formatNumber(amountVal).toFixed(2)}</div>`}
+                                        `<div class="amount-display">${formatNumber(amountVal).toFixed(2)}</div>`}
                                     ${isCustom && canEdit ? 
                                         `<div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
                                             ${!isSavedCol ? `<button class="save-col-btn" data-col-key="${col.key}" title="Save this column permanently">💾 Save</button>` : ''}
-                                            <button class="delete-col-btn" data-col-key="${col.key}" title="Remove this column">✕ Remove</button>
                                         </div>` : ''}
                                 </div>
                             </td>`;
@@ -1248,7 +1731,6 @@
                     });
                 }
 
-                // DATE TOTAL ROW
                 const dateTotal = getDateGroupTotal(group);
                 html += `<tr class="date-total-row">`;
                 html += `<td colspan="${allColumns.length + 2}" style="padding:8px 16px;" data-label="">`;
@@ -1276,21 +1758,21 @@
             });
         }
 
-        // COLUMN TOTALS (Footer)
         const colTotals = computeColumnTotals(filtered);
         html += '<tfoot>';
         html += `<tr class="col-total-row">`;
         html += `<td data-label="COLUMN TOTALS"><span class="col-total-label">COLUMN TOTALS</span></td>`;
         allColumns.forEach(col => {
+            const colLabel = getColumnLabel(col);
             if (isNumericColumn(col.key)) {
                 const val = colTotals[col.key] || 0;
-                html += `<td data-label="${col.label}" style="color:var(--text-primary);">${val.toFixed(2)}</td>`;
+                html += `<td class="column-total-cell" data-label="${colLabel}" style="color:var(--text-primary);">${val.toFixed(2)}</td>`;
             } else {
-                html += `<td data-label="${col.label}" style="color:var(--text-primary);">0.00</td>`;
+                html += `<td class="column-total-cell" data-label="${colLabel}" style="color:var(--text-primary);">0.00</td>`;
             }
         });
         const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
-        html += `<td data-label="Total" style="font-weight:700; color:var(--accent-teal);">${totalColSum.toFixed(2)}</td>`;
+        html += `<td class="column-total-cell grand-column-total" data-label="Total" style="font-weight:700; color:var(--accent-teal);">${totalColSum.toFixed(2)}</td>`;
         html += `<td></td>`;
         html += `</tr>`;
 
@@ -1303,10 +1785,6 @@
         const grandTotal = computeGrandTotal(filtered);
         grandTotalEl.textContent = grandTotal.toFixed(2);
 
-        // ========================================
-        // EVENT LISTENERS - FIXED WITH CLICKABLE DESCRIPTIONS
-        // ========================================
-        
         document.querySelectorAll('.desc-input, .trans-input, .amount-input').forEach(input => {
             input.addEventListener('input', handleInputChange);
         });
@@ -1322,7 +1800,6 @@
             }, 10);
         });
 
-        // Read More button click
         document.querySelectorAll('.read-more-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -1333,19 +1810,11 @@
             });
         });
 
-        // Click on any desc-display to view full content (for both Description and Transaction Reference)
         document.querySelectorAll('.desc-display').forEach(el => {
             el.addEventListener('click', function() {
                 const fullText = this.dataset.fullText || '';
-                let text = fullText;
-                // If no data-full-text, use the text content
-                if (!text || text === '-' || text === '') {
-                    text = this.textContent.trim();
-                }
-                // Remove "readmore" button text if present
-                text = text.replace(/readmore$/, '').trim();
-                if (text && text !== '-') {
-                    openReadMoreModal(text);
+                if (fullText && fullText !== '-') {
+                    openReadMoreModal(fullText);
                 }
             });
         });
@@ -1390,12 +1859,9 @@
             });
         });
 
-        document.querySelectorAll('.delete-col-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const colKey = e.target.dataset.colKey;
-                removeCustomColumn(colKey);
-            });
-        });
+        // Column delete button event listener removed
+
+        setupColumnNameEditListeners();
 
         saveToStorage();
         
@@ -1404,6 +1870,9 @@
         }, 50);
     }
 
+    // ========================================
+    // HANDLE DELETE ROW
+    // ========================================
     function handleDeleteRow(e) {
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can delete rows', 'error');
@@ -1411,33 +1880,65 @@
         }
         const dateId = parseInt(e.target.dataset.dateId);
         const rowId = parseInt(e.target.dataset.rowId);
-        if (confirm('Delete this transaction?')) {
+        
+        if (confirm('⚠️ Are you sure you want to delete this transaction?\n\nThis data will be permanently deleted from the cloud and cannot be recovered.')) {
             const group = data.find(d => d.id === dateId);
             if (group) {
+                const key = dateId + '_' + rowId;
+                if (transactionFees[key]) {
+                    delete transactionFees[key];
+                    console.log('🗑️ Fee removed for deleted row:', key);
+                }
+                recalculateTotalFees();
+                updateTransactionFeesDisplay();
+                
                 group.rows = group.rows.filter(r => r.id !== rowId);
                 render();
+                saveToStorage();
                 scheduleCloudSync();
+                showToast('✅ Transaction deleted successfully', 'success');
             }
         }
     }
 
+    // ========================================
+    // HANDLE DELETE DATE
+    // ========================================
     function handleDeleteDate(e) {
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can delete dates', 'error');
             return;
         }
         const dateId = parseInt(e.target.dataset.dateId);
-        if (confirm('Delete this entire date entry and all its transactions?')) {
+        
+        if (confirm('⚠️ Are you sure you want to delete this entire date entry and all its transactions?\n\nThis data will be permanently deleted from the cloud and cannot be recovered.')) {
+            const keysToRemove = [];
+            for (let key in transactionFees) {
+                if (key.startsWith(dateId + '_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => {
+                delete transactionFees[key];
+                console.log('🗑️ Fee removed for deleted date:', key);
+            });
+            
             data = data.filter(d => d.id !== dateId);
             delete savedDates[dateId];
             delete editModes[dateId];
+            
+            recalculateTotalFees();
+            updateTransactionFeesDisplay();
+            
             render();
+            saveToStorage();
             scheduleCloudSync();
+            showToast('✅ Date entry deleted successfully', 'success');
         }
     }
 
     // ========================================
-    // ADD DATE ENTRY WITH DUPLICATE CHECK
+    // ADD DATE ENTRY
     // ========================================
     function addDateEntry() {
         if (!userCanEdit()) {
@@ -1545,7 +2046,8 @@
             printHtml += `<table>`;
             printHtml += `<tr><th>DATE</th>`;
             allColumns.forEach(col => {
-                printHtml += `<th>${col.label}</th>`;
+                const colLabel = getColumnLabel(col);
+                printHtml += `<th>${colLabel}</th>`;
             });
             printHtml += `<th>TOTAL</th></tr>`;
 
@@ -1618,6 +2120,13 @@
             printHtml += `</table>`;
         }
 
+        printHtml += `
+        <div style="margin-top: 30px; border-top: 2px solid #c89a5b; padding-top: 20px;">
+            <h2 style="color: #0a2a44; font-size: 18px;">💳 TRANSACTION FEES</h2>
+            <p style="font-size: 14px; font-weight: 700; color: #0a2a44;">Total Transaction Fees: KSh ${totalTransactionFees.toFixed(2)}</p>
+        </div>
+        `;
+
         printHtml += `<div class="footer">Generated: ${new Date().toLocaleString()} | Starlink Expenditure System</div>`;
         printHtml += `</body></html>`;
 
@@ -1648,7 +2157,10 @@
                 savedDates,
                 editModes,
                 dateFrom,
-                dateTo
+                dateTo,
+                columnNameEdits,
+                transactionFees,
+                totalTransactionFees
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
         } catch (e) {}
@@ -1673,12 +2185,62 @@
                 editModes = store.editModes || {};
                 dateFrom = store.dateFrom || '';
                 dateTo = store.dateTo || '';
+                if (store.columnNameEdits) {
+                    columnNameEdits = store.columnNameEdits;
+                    saveColumnNameEdits();
+                }
+                if (store.transactionFees) {
+                    transactionFees = store.transactionFees || {};
+                    totalTransactionFees = store.totalTransactionFees || 0;
+                }
                 if (dateFrom) dateFromInput.value = dateFrom;
                 if (dateTo) dateToInput.value = dateTo;
                 return true;
             }
         } catch (e) {}
         return false;
+    }
+
+    // ========================================
+    // CREATE TRANSACTION FEES DISPLAY
+    // ========================================
+    function createTransactionFeesDisplay() {
+        let feesEl = document.getElementById('transactionFeesDisplay');
+        if (feesEl) {
+            updateTransactionFeesDisplay();
+            return;
+        }
+
+        const totalsGrid = document.querySelector('.totals-grid');
+        if (!totalsGrid) return;
+
+        const feesCard = document.createElement('div');
+        feesCard.className = 'total-card';
+        feesCard.id = 'transactionFeesDisplay';
+        feesCard.style.cssText = `
+            background: linear-gradient(135deg, rgba(200, 154, 91, 0.12) 0%, rgba(226, 104, 91, 0.08) 100%);
+            border: 1px solid rgba(200, 154, 91, 0.15);
+            padding: 8px 18px 8px 16px;
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 10px var(--shadow-light);
+        `;
+        
+        feesCard.innerHTML = `
+            <span style="font-weight: 600; color: var(--text-muted); font-size: 0.7rem;">💳 TRANSACTION FEES</span>
+            <span style="font-weight: 800; font-size: 1.2rem; color: var(--accent-brass);" id="transactionFeesTotal">${totalTransactionFees.toFixed(2)}</span>
+        `;
+
+        const grandTotalCard = document.getElementById('grandTotalCard');
+        if (grandTotalCard) {
+            grandTotalCard.after(feesCard);
+        } else {
+            totalsGrid.appendChild(feesCard);
+        }
+
+        updateTransactionFeesDisplay();
     }
 
     // ========================================
@@ -1700,6 +2262,8 @@
             editModes = {};
             dateFrom = '';
             dateTo = '';
+            transactionFees = {};
+            totalTransactionFees = 0;
             const sampleGroup = {
                 id: nextDateId++,
                 date: new Date().toISOString().split('T')[0],
@@ -1708,8 +2272,12 @@
             data = [sampleGroup];
         }
 
+        rebuildFeesFromData();
+
         data = sortDataByDate(data);
         render();
+
+        createTransactionFeesDisplay();
 
         if (SYNC_ENABLED) {
             setTimeout(() => {
@@ -1717,6 +2285,7 @@
                     setTimeout(() => {
                         updateTotalsOnly();
                         console.log('✅ Totals refreshed after cloud sync');
+                        console.log('💳 Total Transaction Fees:', totalTransactionFees);
                     }, 200);
                 });
             }, 1000);
@@ -1765,6 +2334,30 @@
     function init() {
         console.log('🚀 Initializing app...');
         
+        // Check for existing session FIRST
+        const savedUser = sessionStorage.getItem('starlink_user');
+        if (savedUser) {
+            try {
+                const user = JSON.parse(savedUser);
+                const users = getUsers();
+                const exists = users.find(u => u.id === user.id);
+                if (exists) {
+                    console.log('✅ Session found for user:', user.username);
+                    currentUser = user;
+                    // Show main app immediately
+                    showMainApp();
+                    return;
+                } else {
+                    sessionStorage.removeItem('starlink_user');
+                    currentUser = null;
+                }
+            } catch (e) {
+                console.warn('⚠️ Invalid session data:', e);
+                sessionStorage.removeItem('starlink_user');
+                currentUser = null;
+            }
+        }
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
                 console.log('📄 DOM loaded, initializing...');
@@ -1799,6 +2392,7 @@
                 return;
             }
             
+            // Check if user is already logged in
             const savedUser = sessionStorage.getItem('starlink_user');
             let loggedIn = false;
             
@@ -1808,13 +2402,17 @@
                     const users = getUsers();
                     const exists = users.find(u => u.id === currentUser.id);
                     if (exists) {
-                        console.log('✅ User logged in:', currentUser.username);
+                        console.log('✅ User logged in from session:', currentUser.username);
                         showMainApp();
                         loggedIn = true;
+                    } else {
+                        sessionStorage.removeItem('starlink_user');
+                        currentUser = null;
                     }
                 } catch (e) {
                     console.warn('⚠️ Invalid session data:', e);
                     sessionStorage.removeItem('starlink_user');
+                    currentUser = null;
                 }
             }
             
@@ -1911,6 +2509,7 @@
             if (changePasswordSaveBtn) {
                 changePasswordSaveBtn.addEventListener('click', function(e) {
                     e.preventDefault();
+                    console.log('🔑 Change Password button clicked from event listener');
                     handleChangePassword();
                 });
             }
@@ -2040,10 +2639,13 @@
         }
     }
 
-    if (document.readyState === 'complete') {
+    // ========================================
+    // START APP
+    // ========================================
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
         setTimeout(init, 100);
     } else {
-        window.addEventListener('load', function() {
+        document.addEventListener('DOMContentLoaded', function() {
             setTimeout(init, 100);
         });
     }
