@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>Starlink · General Connection Expenditure</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css?v=20260908">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
 </head>
 
 <body>
@@ -155,13 +156,19 @@
                 <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
             </div>
 
+            <!-- Totals Grid with Transaction Fees -->
             <div class="totals-grid">
                 <div class="total-card" id="grandTotalCard">
                     <span class="total-label">💰 GRAND TOTAL</span>
                     <span class="total-value" id="grandTotal">0.00</span>
                 </div>
+                <!-- Transaction Fees Card -->
+                <div class="total-card" id="transactionFeesDisplay" style="background: linear-gradient(135deg, rgba(200, 154, 91, 0.12) 0%, rgba(226, 104, 91, 0.08) 100%); border: 1px solid rgba(200, 154, 91, 0.15);">
+                    <span class="total-label" style="font-weight: 600; color: var(--text-muted); font-size: 0.7rem;">💳 TRANSACTION FEES</span>
+                    <span class="total-value" id="transactionFeesTotal" style="font-weight: 800; font-size: 1.2rem; color: var(--accent-brass);">0.00</span>
+                </div>
             </div>
-            <p class="hint">* Enter amounts in any field — totals update automatically.</p>
+            <p class="hint">* Enter amounts in any field — totals update automatically. <br>💡 Paste M-Pesa message in Transaction Reference to auto-fill amount & capture fees.</p>
         </main>
     </div>
 
@@ -224,26 +231,6 @@
     </div>
 
     <script src="script.js"></script>
-
-    <script>
-        (function() {
-            setTimeout(function() {
-                const savedUser = sessionStorage.getItem('starlink_user');
-                const loginScreen = document.getElementById('loginScreen');
-                const mainApp = document.getElementById('mainApp');
-                const forgotScreen = document.getElementById('forgotScreen');
-                const changePasswordScreen = document.getElementById('changePasswordScreen');
-
-                if (!savedUser && loginScreen) {
-                    console.log('🔐 Force showing login screen');
-                    loginScreen.style.display = 'flex';
-                    if (mainApp) mainApp.style.display = 'none';
-                    if (forgotScreen) forgotScreen.style.display = 'none';
-                    if (changePasswordScreen) changePasswordScreen.style.display = 'none';
-                }
-            }, 500);
-        })();
-    </script>
 </body>
 
 </html>
