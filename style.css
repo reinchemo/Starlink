@@ -678,9 +678,7 @@ td {
 
 
 /* Column Groups - Smaller */
-/* FIX: overflow changed from hidden -> visible so inner input text (esp. AMOUNT)
-   can never be hard-clipped by this container. Height is still used to keep
-   row cards visually uniform, but content is allowed to breathe. */
+
 .column-group {
     display: flex;
     flex-direction: column;
@@ -709,9 +707,6 @@ td {
     line-height: 1.1;
 }
 
-/* FIX: explicit line-height added so the browser default (which varies by
-   platform) can no longer make a glyph's ascender taller than the padding
-   budget and get cropped by a parent's overflow rule. */
 .column-group input,
 .column-group textarea {
     width: 100%;
@@ -778,24 +773,66 @@ td {
     flex-shrink: 0;
 }
 
-/* FIX: increased top padding + explicit line-height so "0.00" is vertically
-   centered in the box instead of sitting flush against the top edge. */
+
+/* ======================================== */
+
+
+/* AMOUNT - LARGER & VISIBLE ON DESKTOP */
+
+
+/* ======================================== */
+
 .column-group .amount-input {
     font-weight: 700;
     text-align: right;
-    padding: 5px 6px 4px 5px;
-    line-height: 1.4;
-    font-size: 0.75rem;
-    background: var(--bg-input);
-    border-color: var(--border-color);
-    color: var(--accent-teal);
+    font-size: 1.1rem !important;
+    padding: 12px 14px !important;
+    min-height: 48px !important;
+    margin: 6px 0 !important;
+    background: rgba(79, 182, 168, 0.15) !important;
+    border: 2px solid var(--accent-teal) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--accent-teal-light) !important;
     width: 100%;
-    min-height: 26px;
     flex-shrink: 0;
+    box-sizing: border-box;
+    display: block;
+    font-family: 'Inter', monospace;
+    line-height: 1.4;
 }
 
 .column-group .amount-input:focus {
-    background: var(--bg-input-focus);
+    background: rgba(79, 182, 168, 0.25) !important;
+    border-color: var(--accent-teal-light) !important;
+    box-shadow: 0 0 0 3px rgba(79, 182, 168, 0.15);
+    outline: none;
+}
+
+.column-group .amount-input::placeholder {
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
+
+/* Amount display when NOT in edit mode - FULLY VISIBLE */
+
+.amount-display {
+    font-weight: 700;
+    text-align: right;
+    font-size: 1.1rem !important;
+    color: var(--accent-teal-light) !important;
+    background: rgba(79, 182, 168, 0.18) !important;
+    padding: 12px 14px !important;
+    min-height: 48px !important;
+    margin: 6px 0 !important;
+    border-radius: var(--radius-sm) !important;
+    border: 2px solid var(--accent-teal) !important;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-family: 'Inter', monospace;
+    text-shadow: 0 0 10px rgba(79, 182, 168, 0.1);
 }
 
 
@@ -1089,6 +1126,26 @@ td {
     font-weight: 800;
     font-size: 1.2rem;
     color: var(--text-primary);
+}
+
+
+/* Transaction Fees Card - Special Styling */
+
+.total-card#transactionFeesDisplay {
+    background: linear-gradient(135deg, rgba(200, 154, 91, 0.12) 0%, rgba(226, 104, 91, 0.08) 100%) !important;
+    border: 1px solid rgba(200, 154, 91, 0.15) !important;
+}
+
+.total-card#transactionFeesDisplay .total-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.total-card#transactionFeesDisplay .total-value {
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: var(--accent-brass);
 }
 
 .hint {
@@ -1410,10 +1467,6 @@ td {
         min-width: 1350px;
         font-size: 0.95rem;
     }
-    /*
-       Main transaction columns get the available width.
-       The final two columns are deliberately compact.
-    */
     table th:first-child,
     table td:first-child {
         width: 80px;
@@ -1454,9 +1507,6 @@ td {
     td {
         padding: 4px 4px;
     }
-    /* FIX: fixed-height desktop column-group kept overflow hidden originally;
-       switched to overflow-y: auto so a taller-than-box stack (header + 3
-       inputs + gaps) can no longer silently crop the amount field. */
     .column-group {
         gap: 5px;
         padding: 7px 6px;
@@ -1489,9 +1539,9 @@ td {
         line-height: 1.25;
     }
     .column-group .amount-input {
-        font-size: 0.92rem;
-        padding: 7px 8px 6px;
-        min-height: 33px;
+        font-size: 1.1rem !important;
+        padding: 12px 14px !important;
+        min-height: 48px !important;
     }
     .desc-display {
         font-size: 0.88rem;
@@ -1870,8 +1920,6 @@ td {
         padding: 4px;
         border-bottom: none;
     }
-    /* FIX: height:auto + overflow:visible ensures the card grows to fit the
-       amount field instead of clipping it against a fixed box. */
     .column-group {
         flex: 1;
         min-width: 0;
@@ -1908,9 +1956,16 @@ td {
         min-height: 30px !important;
     }
     .column-group .amount-input {
-        font-size: 0.85rem !important;
-        padding: 6px 7px 5px !important;
-        min-height: 32px !important;
+        font-size: 0.95rem !important;
+        padding: 10px 12px !important;
+        min-height: 44px !important;
+        border: 2px solid var(--accent-teal) !important;
+    }
+    .amount-display {
+        font-size: 0.95rem !important;
+        padding: 10px 12px !important;
+        min-height: 44px !important;
+        border: 2px solid var(--accent-teal) !important;
     }
     .desc-display {
         font-size: 0.8rem !important;
@@ -2138,9 +2193,16 @@ td {
         min-height: 24px !important;
     }
     .column-group .amount-input {
-        font-size: 0.75rem !important;
-        padding: 4px 5px 3px !important;
-        min-height: 26px !important;
+        font-size: 0.85rem !important;
+        padding: 8px 10px !important;
+        min-height: 38px !important;
+        border: 2px solid var(--accent-teal) !important;
+    }
+    .amount-display {
+        font-size: 0.85rem !important;
+        padding: 8px 10px !important;
+        min-height: 38px !important;
+        border: 2px solid var(--accent-teal) !important;
     }
     .column-group .field-header {
         font-size: 0.45rem;
