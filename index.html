@@ -6,8 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>Starlink · General Connection Expenditure</title>
     <link rel="stylesheet" href="style.css?v=20260908">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -147,29 +149,34 @@
         </header>
 
         <main>
-            <div class="table-container">
-                <div id="tableWrapper" class="table-responsive"></div>
+            <!-- Search Bar -->
+            <div class="search-bar-row">
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search by transaction code...">
+                    <button id="clearSearchBtn" class="search-clear-btn" style="display:none;">✕</button>
+                </div>
+                <div id="searchResultInfo" class="search-result-info"></div>
             </div>
 
-            <div class="action-row">
-                <button id="addDateBtn" class="btn btn-add">➕ Add New Date Entry</button>
-                <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
-            </div>
+            <main>
+                <div class="table-container">
+                    <div id="tableWrapper" class="table-responsive"></div>
+                </div>
 
-            <!-- Totals Grid with Transaction Fees -->
-            <div class="totals-grid">
-                <div class="total-card" id="grandTotalCard">
-                    <span class="total-label">💰 GRAND TOTAL</span>
-                    <span class="total-value" id="grandTotal">0.00</span>
+                <div class="action-row">
+                    <button id="addDateBtn" class="btn btn-add">➕ Add New Date Entry</button>
+                    <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
                 </div>
-                <!-- Transaction Fees Card -->
-                <div class="total-card" id="transactionFeesDisplay" style="background: linear-gradient(135deg, rgba(200, 154, 91, 0.12) 0%, rgba(226, 104, 91, 0.08) 100%); border: 1px solid rgba(200, 154, 91, 0.15);">
-                    <span class="total-label" style="font-weight: 600; color: var(--text-muted); font-size: 0.7rem;">💳 TRANSACTION FEES</span>
-                    <span class="total-value" id="transactionFeesTotal" style="font-weight: 800; font-size: 1.2rem; color: var(--accent-brass);">0.00</span>
+
+                <div class="totals-grid">
+                    <div class="total-card" id="grandTotalCard">
+                        <span class="total-label">💰 GRAND TOTAL</span>
+                        <span class="total-value" id="grandTotal">0.00</span>
+                    </div>
                 </div>
-            </div>
-            <p class="hint">* Enter amounts in any field — totals update automatically. <br>💡 Paste M-Pesa message in Transaction Reference to auto-fill amount & capture fees.</p>
-        </main>
+                <p class="hint">* Enter amounts in any field — totals update automatically.</p>
+            </main>
     </div>
 
     <!-- ======================================== -->
