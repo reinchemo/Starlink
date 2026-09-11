@@ -16,6 +16,9 @@
 // FIX APPLIED: Added fee rebuild on load to eliminate phantom fees
 // FIX APPLIED: Fixed session persistence on page refresh
 // FIX APPLIED: Removed column delete button only - kept row and date delete
+// FIX APPLIED: Transaction Reference hover tooltip shows full message
+// FIX APPLIED: Empty Transaction Reference clears Amount field
+// FIX APPLIED: Search bar for finding transaction codes
 
 (function() {
         "use strict";
@@ -1472,7 +1475,7 @@
     }
 
     // ========================================
-    // HANDLE INPUT CHANGE
+    // HANDLE INPUT CHANGE - FIXED: Empty transaction clears amount
     // ========================================
     function handleInputChange(e) {
         if (!userCanEdit()) {
@@ -1492,22 +1495,47 @@
         if (!row) return;
 
         row[key] = value;
+
+        // Keep tooltip in sync for transaction references
+        if (key.endsWith('_transaction')) {
+            input.title = value;
+        }
         
-        if (key.endsWith('_transaction') && value && value.length > 5) {
-            console.log('📨 Transaction message detected:', value.substring(0, 80) + '...');
-            const parsed = parseMpesaMessage(value);
-            if (parsed) {
-                if (parsed.amount !== null && parsed.amount > 0) {
-                    const amountKey = key.replace('_transaction', '_amount');
-                    row[amountKey] = parsed.amount.toString();
-                    console.log('💰 Amount auto-filled:', parsed.amount);
-                    showToast('💰 Amount extracted: KSh ' + parsed.amount.toFixed(2), 'success');
+        // 🔥 FIX: If transaction reference field changes
+        if (key.endsWith('_transaction')) {
+            const amountKey = key.replace('_transaction', '_amount');
+            
+            // If transaction reference is empty, clear the amount
+            if (!value || value.trim() === '') {
+                row[amountKey] = '';
+                row._pendingFee = null;
+                console.log('🗑️ Transaction reference cleared - amount cleared');
+            } else if (value.length > 5) {
+                console.log('📨 Transaction message detected:', value.substring(0, 80) + '...');
+                const parsed = parseMpesaMessage(value);
+                if (parsed) {
+                    if (parsed.amount !== null && parsed.amount > 0) {
+                        row[amountKey] = parsed.amount.toString();
+                        console.log('💰 Amount auto-filled:', parsed.amount);
+                        showToast('💰 Amount extracted: KSh ' + parsed.amount.toFixed(2), 'success');
+                    } else {
+                        row[amountKey] = '';
+                    }
+                    if (parsed.transactionCost !== null && parsed.transactionCost > 0) {
+                        row._pendingFee = parsed.transactionCost;
+                        console.log('💳 Transaction fee detected (will be added on Save):', parsed.transactionCost);
+                        showToast('💳 Transaction fee detected: KSh ' + parsed.transactionCost.toFixed(2) + ' (click Save to capture)', 'info');
+                    } else {
+                        row._pendingFee = null;
+                    }
+                } else {
+                    row[amountKey] = '';
+                    row._pendingFee = null;
                 }
-                if (parsed.transactionCost !== null && parsed.transactionCost > 0) {
-                    row._pendingFee = parsed.transactionCost;
-                    console.log('💳 Transaction fee detected (will be added on Save):', parsed.transactionCost);
-                    showToast('💳 Transaction fee detected: KSh ' + parsed.transactionCost.toFixed(2) + ' (click Save to capture)', 'info');
-                }
+            } else {
+                // Short text - not a valid message, clear amount
+                row[amountKey] = '';
+                row._pendingFee = null;
             }
         }
         
@@ -1603,6 +1631,113 @@
     }
 
     // ========================================
+    // SETUP SEARCH FUNCTIONALITY
+    // ========================================
+    function setupSearchFunctionality() {
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const searchResultInfo = document.getElementById('searchResultInfo');
+
+        if (!searchInput) {
+            console.warn('⚠️ Search input not found in DOM');
+            return;
+        }
+
+        if (searchInput._searchInitialized) return;
+        searchInput._searchInitialized = true;
+
+        let searchTimer = null;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                performSearch(this.value.trim());
+            }, 250);
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                performSearch('');
+            }
+        });
+
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                performSearch('');
+                searchInput.focus();
+            });
+        }
+    }
+
+    // ========================================
+    // PERFORM SEARCH
+    // ========================================
+    function performSearch(query) {
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const searchResultInfo = document.getElementById('searchResultInfo');
+
+        // Clear previous highlights
+        document.querySelectorAll('tr.row-highlight').forEach(el => el.classList.remove('row-highlight'));
+        document.querySelectorAll('td.cell-highlight').forEach(el => el.classList.remove('cell-highlight'));
+
+        if (clearSearchBtn) {
+            clearSearchBtn.style.display = query ? 'inline-block' : 'none';
+        }
+
+        if (!query) {
+            if (searchResultInfo) {
+                searchResultInfo.style.display = 'none';
+                searchResultInfo.textContent = '';
+            }
+            return;
+        }
+
+        const upperQuery = query.toUpperCase();
+        let matchCount = 0;
+        let firstMatch = null;
+
+        // Search through all transaction inputs and displays
+        const transElements = document.querySelectorAll('.trans-input, .desc-display[data-type="transaction"], .desc-display[data-full-text]');
+
+        transElements.forEach(el => {
+            const text = (el.value || el.textContent || el.dataset.fullText || '').toUpperCase();
+            if (text.includes(upperQuery)) {
+                matchCount++;
+
+                // Highlight the row
+                const row = el.closest('tr');
+                if (row && !row.classList.contains('row-highlight')) {
+                    row.classList.add('row-highlight');
+                    if (!firstMatch) firstMatch = row;
+                }
+
+                // Highlight the cell
+                const cell = el.closest('td');
+                if (cell) cell.classList.add('cell-highlight');
+            }
+        });
+
+        if (searchResultInfo) {
+            if (matchCount > 0) {
+                searchResultInfo.textContent = `Found ${matchCount} match${matchCount > 1 ? 'es' : ''}`;
+                searchResultInfo.classList.remove('no-result');
+                searchResultInfo.style.display = 'inline-block';
+            } else {
+                searchResultInfo.textContent = 'No matches found';
+                searchResultInfo.classList.add('no-result');
+                searchResultInfo.style.display = 'inline-block';
+            }
+        }
+
+        // Scroll to first match
+        if (firstMatch) {
+            firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    // ========================================
     // RENDER - REMOVED COLUMN DELETE BUTTON ONLY
     // ========================================
     function render() {
@@ -1642,7 +1777,7 @@
                     const isSavedCol = col.isSaved || false;
                     const colKey = col.key;
                     const colLabel = getColumnLabel(col);
-                    
+
                     html += `<td style="min-width:120px; text-align:center; background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}" data-col-key="${colKey}">
                         <div class="col-header-with-edit">
                             <span class="col-label" data-col-key="${colKey}" data-label="${colLabel}">${colLabel}</span>
@@ -1711,8 +1846,8 @@
                                     ${descDisplay}
                                     <span class="field-header">Transaction Reference</span>
                                     ${showEditMode && canEdit ? 
-                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1">${transVal}</textarea>` : 
-                                        `<div class="desc-display">${transVal || '-'}</div>`}
+                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1" title="${transVal.replace(/"/g, '&quot;')}">${transVal}</textarea>` : 
+                                        `<div class="desc-display" data-full-text="${transVal.replace(/"/g, '&quot;')}" data-type="transaction" title="${transVal.replace(/"/g, '&quot;')}">${transVal || '-'}</div>`}
                                     <span class="field-header">Amount</span>
                                     ${showEditMode && canEdit ? 
                                         `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
@@ -1793,6 +1928,10 @@
             textarea.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
+                // Keep tooltip in sync for transaction references
+                if (this.classList.contains('trans-input')) {
+                    this.title = this.value;
+                }
             });
             setTimeout(() => {
                 textarea.style.height = 'auto';
@@ -1859,8 +1998,6 @@
             });
         });
 
-        // Column delete button event listener removed
-
         setupColumnNameEditListeners();
 
         saveToStorage();
@@ -1868,6 +2005,14 @@
         setTimeout(() => {
             updateTotalsOnly();
         }, 50);
+
+        // Re-apply search highlight after render
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput && searchInput.value.trim()) {
+            setTimeout(() => {
+                performSearch(searchInput.value.trim());
+            }, 60);
+        }
     }
 
     // ========================================
@@ -2278,6 +2423,7 @@
         render();
 
         createTransactionFeesDisplay();
+        setupSearchFunctionality();
 
         if (SYNC_ENABLED) {
             setTimeout(() => {
