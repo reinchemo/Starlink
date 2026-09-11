@@ -1,24 +1,12 @@
-// script.js – With Login System, Auto-calculating Totals, Save Button, and Supabase Cloud Sync
-// FIX APPLIED: handleChangePassword() no longer crashes when opened before login
-// FIX APPLIED: Amount display now uses .amount-display class with visible styling
-// FIX APPLIED: Duplicate column headers removed on mobile
-// FIX APPLIED: Editable column names for ALL columns (default + custom)
-// FIX APPLIED: Mobile expenditure cells with .expenditure-cell class
-// FIX APPLIED: Mobile column totals with .column-total-cell class
-// FIX APPLIED: M-Pesa message parsing - extracts amount, date, time, and transaction cost
-// FIX APPLIED: Transaction fees tracking with separate display
-// FIX APPLIED: Delete confirmation with cloud warning
-// FIX APPLIED: Transaction fees calculated from ALL records in cloud
-// FIX APPLIED: Transaction fee captured and added when Save is clicked
-// FIX APPLIED: Improved M-Pesa parsing for "Transaction cost, Ksh57.00" format
-// FIX APPLIED: Fixed fee multiplication issue
-// FIX APPLIED: Fixed fee removal on row deletion
-// FIX APPLIED: Added fee rebuild on load to eliminate phantom fees
-// FIX APPLIED: Fixed session persistence on page refresh
-// FIX APPLIED: Removed column delete button only - kept row and date delete
-// FIX APPLIED: Transaction Reference hover tooltip shows full message
-// FIX APPLIED: Empty Transaction Reference clears Amount field
-// FIX APPLIED: Search bar for finding transaction codes
+// script.js – Login, Auto-calculating Totals, Supabase Cloud Sync, Realtime, Summary Export
+// 6 default columns + 3 expected saved custom columns (DARKWEBS EXPENDITURE,
+// STARLINK INVESTMENT, KAIRO ROUTERS). All columns count toward the grand total.
+//
+// FIXES:
+//  - syncToCloud() refuses to write an empty/zero summary when data has real rows
+//  - buildSummary() sanity-warns if it computes zeros despite rows having amounts
+//  - safe numeric coercion everywhere (handles "", null, undefined)
+//  - Storage key bumped to v32
 
 (function() {
         "use strict";
@@ -33,7 +21,16 @@
         const SYNC_ENABLED = true;
 
         // ========================================
-        // INITIALIZE SUPABASE
+        // STORAGE KEYS
+        // ========================================
+        const KEY_USER_SESSION = 'starlink_user';
+        const KEY_USERS = 'starlink_users';
+        const KEY_THEME = 'starlink_theme';
+        const KEY_COLUMN_NAMES = 'starlink_column_names';
+        const STORAGE_KEY = 'starlinkExpenditureData_v32';
+
+        // ========================================
+        // SUPABASE INIT
         // ========================================
         function initSupabase() {
             try {
@@ -41,16 +38,15 @@
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     console.log('✅ Supabase initialized');
                     return true;
-                } else {
-                    console.log('⏳ Loading Supabase library...');
-                    setTimeout(() => {
-                        if (typeof supabase !== 'undefined') {
-                            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                            console.log('✅ Supabase initialized');
-                        }
-                    }, 1000);
-                    return false;
                 }
+                console.log('⏳ Loading Supabase library...');
+                setTimeout(() => {
+                    if (typeof supabase !== 'undefined') {
+                        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                        console.log('✅ Supabase initialized');
+                    }
+                }, 1000);
+                return false;
             } catch (e) {
                 console.error('❌ Supabase error:', e);
                 return false;
@@ -58,8 +54,24 @@
         }
 
         // ========================================
-        // TOAST NOTIFICATIONS
+        // UTILITIES
         // ========================================
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function safeNum(v) {
+            if (v === '' || v === null || v === undefined) return 0;
+            const n = typeof v === 'number' ? v : parseFloat(v);
+            return isNaN(n) ? 0 : n;
+        }
+
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast-message');
             if (existing) existing.remove();
@@ -95,7 +107,96 @@
         }
 
         // ========================================
-        // SUPABASE SYNC FUNCTIONS
+        // BUILD SUMMARY
+        // Resolves columns by key OR label to handle
+        // default, saved, and temp custom columns.
+        // ========================================
+        function buildSummary() {
+            const allCols = getAllColumns();
+
+            function findColumnKey(keyword) {
+                const upperKeyword = keyword.toUpperCase();
+                if (allCols.some(c => c.key === keyword)) return keyword;
+
+                const savedMatch = allCols.find(c =>
+                    c.isSaved && c.label && c.label.toUpperCase().includes(upperKeyword)
+                );
+                if (savedMatch) return savedMatch.key;
+
+                const tempMatch = allCols.find(c =>
+                    c.isTemp && c.label && c.label.toUpperCase().includes(upperKeyword)
+                );
+                if (tempMatch) return tempMatch.key;
+
+                return null;
+            }
+
+            function sumColumn(colKey) {
+                if (!colKey) return 0;
+                let total = 0;
+                data.forEach(group => {
+                    (group.rows || []).forEach(row => {
+                        total += getColumnAmount(row, colKey);
+                    });
+                });
+                return Math.round(total * 100) / 100;
+            }
+
+            const commonExpenditureKey = findColumnKey('COMMON EXPENDITURE');
+            const routersKey = findColumnKey('ROUTERS');
+            const kairoRoutersKey = findColumnKey('KAIRO ROUTERS');
+            const starlinkInvestmentKey = findColumnKey('STARLINK INVESTMENT');
+
+            const commonExpenditureTotal = sumColumn(commonExpenditureKey);
+            const routersTotal = sumColumn(routersKey);
+            const kairoRoutersTotal = sumColumn(kairoRoutersKey);
+            const starlinkInvestmentTotal = sumColumn(starlinkInvestmentKey);
+
+            const starlinkVirtualInvestment =
+                Math.round(
+                    ((5 / 6) * commonExpenditureTotal +
+                        (routersTotal - kairoRoutersTotal)) * 100
+                ) / 100;
+
+            const summary = {
+                commonExpenditureTotal,
+                routersTotal,
+                kairoRoutersTotal,
+                starlinkInvestmentTotal,
+                starlinkVirtualInvestment,
+                totalTransactionFees: Math.round(totalTransactionFees * 100) / 100,
+                lastUpdated: new Date().toISOString()
+            };
+
+            // Sanity check — if summary is all zero, warn loudly
+            if (summary.commonExpenditureTotal === 0 &&
+                summary.routersTotal === 0 &&
+                summary.starlinkVirtualInvestment === 0 &&
+                data && data.length > 0) {
+
+                let hasAnyAmounts = false;
+                data.forEach(g => (g.rows || []).forEach(r => {
+                    allCols.forEach(c => {
+                        if (safeNum(r[c.key + '_amount']) > 0) hasAnyAmounts = true;
+                    });
+                }));
+
+                if (hasAnyAmounts) {
+                    console.warn('⚠️ buildSummary: summary is 0 but raw data has amounts!', {
+                        commonExpenditureKey,
+                        routersKey,
+                        kairoRoutersKey,
+                        starlinkInvestmentKey
+                    });
+                }
+            }
+
+            console.log('📊 Summary computed:', summary);
+            return summary;
+        }
+
+        // ========================================
+        // SUPABASE SYNC
         // ========================================
         async function syncToCloud(showToastMsg = true) {
             if (!SYNC_ENABLED || !supabaseClient) {
@@ -103,8 +204,16 @@
                 return;
             }
 
+            // GUARD: Don't sync if data is empty or if there's nothing meaningful
+            if (!data || data.length === 0) {
+                console.warn('⚠️ syncToCloud skipped — no data loaded yet');
+                if (showToastMsg) showToast('⚠️ Nothing to sync yet', 'info');
+                return;
+            }
+
             try {
                 data = sortDataByDate(data);
+                const summary = buildSummary();
 
                 const store = {
                     data: data,
@@ -118,6 +227,7 @@
                     columnNameEdits: columnNameEdits,
                     transactionFees: transactionFees,
                     totalTransactionFees: totalTransactionFees,
+                    summary: summary,
                     lastUpdated: new Date().toISOString()
                 };
 
@@ -134,7 +244,7 @@
                     console.error('❌ Sync error:', error);
                     if (showToastMsg) showToast('❌ Sync failed: ' + error.message, 'error');
                 } else {
-                    console.log('✅ Synced to cloud');
+                    console.log('✅ Synced to cloud', summary);
                     if (showToastMsg) showToast('✅ Data synced to cloud', 'success');
                 }
             } catch (e) {
@@ -148,7 +258,6 @@
                 if (showToastMsg) showToast('⚠️ Supabase not connected', 'info');
                 return false;
             }
-
             try {
                 console.log('📥 Pulling from cloud...');
 
@@ -160,7 +269,7 @@
 
                 if (error) {
                     if (error.code === 'PGRST116') {
-                        if (showToastMsg) showToast('ℹ️ No cloud data yet. Add data and it will sync.', 'info');
+                        if (showToastMsg) showToast('ℹ️ No cloud data yet.', 'info');
                     } else {
                         if (showToastMsg) showToast('⚠️ Pull error: ' + error.message, 'error');
                     }
@@ -170,14 +279,17 @@
                 if (result && result.data) {
                     const cloudData = result.data;
 
-                    data = cloudData.data || data;
-                    nextDateId = cloudData.nextDateId || nextDateId;
-                    nextRowId = cloudData.nextRowId || nextRowId;
-                    nextColId = cloudData.nextColId || nextColId;
-                    customColumns = cloudData.customColumns || customColumns;
-                    savedCustomColumns = cloudData.savedCustomColumns || savedCustomColumns;
-                    savedDates = cloudData.savedDates || savedDates;
-                    editModes = cloudData.editModes || editModes;
+                    if (Array.isArray(cloudData.data) && cloudData.data.length > 0) {
+                        data = cloudData.data;
+                    }
+                    if (cloudData.nextDateId) nextDateId = cloudData.nextDateId;
+                    if (cloudData.nextRowId) nextRowId = cloudData.nextRowId;
+                    if (cloudData.nextColId) nextColId = cloudData.nextColId;
+                    if (Array.isArray(cloudData.customColumns)) customColumns = cloudData.customColumns;
+                    if (Array.isArray(cloudData.savedCustomColumns)) savedCustomColumns = cloudData.savedCustomColumns;
+                    if (cloudData.savedDates) savedDates = cloudData.savedDates;
+                    if (cloudData.editModes) editModes = cloudData.editModes;
+
                     if (cloudData.columnNameEdits) {
                         columnNameEdits = cloudData.columnNameEdits;
                         saveColumnNameEdits();
@@ -188,19 +300,14 @@
                     }
 
                     rebuildFeesFromData();
-
                     data = sortDataByDate(data);
                     saveToStorage();
-
-                    console.log('✅ Pulled from cloud');
-                    console.log('📊 Total Transaction Fees:', totalTransactionFees);
 
                     render();
                     setTimeout(() => {
                         updateTotalsOnly();
                         updateTransactionFeesDisplay();
-                        console.log('✅ Totals updated after cloud sync');
-                        console.log('💳 Transaction Fees Displayed:', totalTransactionFees);
+                        updateSummaryDisplay();
                     }, 100);
 
                     if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
@@ -214,13 +321,11 @@
         }
 
         // ========================================
-        // REBUILD FEES FROM DATA
+        // FEES REBUILD
         // ========================================
         function rebuildFeesFromData() {
-            console.log('🔄 Rebuilding fees from data...');
             transactionFees = {};
             totalTransactionFees = 0;
-
             const allCols = getAllColumns();
 
             data.forEach(group => {
@@ -237,29 +342,22 @@
                         }
                     });
                     if (rowFee !== null && rowFee > 0) {
-                        const key = group.id + '_' + row.id;
-                        transactionFees[key] = rowFee;
-                        console.log(`✅ Fee found: KSh ${rowFee} for row ${row.id}`);
+                        transactionFees[group.id + '_' + row.id] = rowFee;
                     }
                 });
             });
 
             recalculateTotalFees();
-            console.log('📊 Total Transaction Fees after rebuild:', totalTransactionFees);
             updateTransactionFeesDisplay();
-            saveToStorage();
             return totalTransactionFees;
         }
 
-        // ========================================
-        // CHECK FOR DUPLICATE TRANSACTION MESSAGES
-        // ========================================
         function checkForDuplicateTransactions(dateId) {
             const group = data.find(d => d.id === dateId);
             if (!group) return null;
 
             const allCols = getAllColumns();
-            const transactionCodes = [];
+            const codes = [];
 
             group.rows.forEach(row => {
                 allCols.forEach(col => {
@@ -268,154 +366,104 @@
                     if (transVal && transVal.trim() !== '') {
                         const parsed = parseMpesaMessage(transVal);
                         if (parsed && parsed.transactionCode) {
-                            transactionCodes.push({
-                                rowId: row.id,
-                                code: parsed.transactionCode
-                            });
+                            codes.push({ rowId: row.id, code: parsed.transactionCode });
                         }
                     }
                 });
             });
 
-            const codeMap = {};
-            for (let item of transactionCodes) {
-                if (codeMap[item.code]) {
-                    return item.code;
-                }
-                codeMap[item.code] = item.rowId;
+            const map = {};
+            for (let item of codes) {
+                if (map[item.code]) return item.code;
+                map[item.code] = item.rowId;
             }
             return null;
         }
 
-        // ========================================
-        // SORT DATA BY DATE (LATEST FIRST)
-        // ========================================
         function sortDataByDate(dataArray) {
             if (!dataArray || dataArray.length === 0) return dataArray;
             return [...dataArray].sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return dateB - dateA;
+                const a1 = new Date(a.date),
+                    b1 = new Date(b.date);
+                return b1 - a1;
             });
         }
 
         // ========================================
-        // USER MANAGEMENT
+        // USERS
         // ========================================
-        const USERS_KEY = 'starlink_users';
-
         const DEFAULT_USERS = [
             { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
             { id: 2, username: 'grace', password: 'grace123', role: 'user' }
         ];
 
         function getUsers() {
-            const stored = localStorage.getItem(USERS_KEY);
+            const stored = localStorage.getItem(KEY_USERS);
             if (stored) {
                 try {
                     const users = JSON.parse(stored);
-                    if (users && users.length > 0) {
-                        return users;
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Failed to parse users from localStorage:', e);
-                }
+                    if (users && users.length > 0) return users;
+                } catch (e) {}
             }
-            localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+            localStorage.setItem(KEY_USERS, JSON.stringify(DEFAULT_USERS));
             return DEFAULT_USERS;
         }
 
         function saveUsers(users) {
-            localStorage.setItem(USERS_KEY, JSON.stringify(users));
-            console.log('✅ Users saved to localStorage:', users.length, 'users');
+            localStorage.setItem(KEY_USERS, JSON.stringify(users));
             return true;
         }
 
         function findUser(username) {
-            const users = getUsers();
-            return users.find(u => u.username.toLowerCase() === username.toLowerCase());
+            return getUsers().find(u => u.username.toLowerCase() === username.toLowerCase());
         }
 
         function authenticateUser(username, password) {
-            const users = getUsers();
-            console.log('🔍 Authenticating user:', username);
-
-            const user = users.find(u =>
+            return getUsers().find(u =>
                 u.username.toLowerCase() === username.toLowerCase() &&
                 u.password === password
-            );
-
-            if (user) {
-                console.log('✅ User authenticated:', user.username);
-            } else {
-                console.log('❌ Authentication failed for:', username);
-            }
-            return user || null;
+            ) || null;
         }
 
         function updateUserPassword(userId, newPassword) {
-            console.log('🔍 Looking for user with ID:', userId);
-
             const users = getUsers();
-            const index = users.findIndex(u => u.id === userId);
-            if (index === -1) {
-                console.error('❌ User not found with ID:', userId);
-                return false;
-            }
-
-            console.log('✅ User found:', users[index].username);
-            users[index].password = newPassword;
+            const i = users.findIndex(u => u.id === userId);
+            if (i === -1) return false;
+            users[i].password = newPassword;
             saveUsers(users);
-            console.log('✅ Password updated for user:', users[index].username);
             return true;
         }
 
         function addUser(username, password, role = 'user') {
             const users = getUsers();
-            if (findUser(username)) {
-                console.warn('⚠️ Username already exists:', username);
-                return false;
-            }
-            const maxId = users.reduce((max, u) => Math.max(max, u.id), 0);
-            const newUser = { id: maxId + 1, username, password, role };
-            users.push(newUser);
+            if (findUser(username)) return false;
+            const maxId = users.reduce((m, u) => Math.max(m, u.id), 0);
+            users.push({ id: maxId + 1, username, password, role });
             saveUsers(users);
-            console.log('✅ User added:', username, 'Role:', role);
             return true;
         }
 
         function updateUser(id, username, password, role) {
             const users = getUsers();
-            const index = users.findIndex(u => u.id === id);
-            if (index === -1) {
-                console.error('❌ User not found with ID:', id);
-                return false;
-            }
-            const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
-            if (existing) {
-                console.warn('⚠️ Username already exists:', username);
-                return false;
-            }
-            users[index] = {...users[index], username, password, role };
+            const i = users.findIndex(u => u.id === id);
+            if (i === -1) return false;
+            const exists = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id);
+            if (exists) return false;
+            users[i] = {...users[i], username, password, role };
             saveUsers(users);
-            console.log('✅ User updated:', username);
             return true;
         }
 
         function deleteUser(id) {
             const users = getUsers();
             const filtered = users.filter(u => u.id !== id);
-            if (filtered.length === users.length) {
-                console.warn('⚠️ User not found with ID:', id);
-                return false;
-            }
+            if (filtered.length === users.length) return false;
             saveUsers(filtered);
-            console.log('✅ User deleted with ID:', id);
             return true;
         }
 
         // ========================================
-        // DOM REFS - LOGIN
+        // DOM REFS
         // ========================================
         const loginScreen = document.getElementById('loginScreen');
         const forgotScreen = document.getElementById('forgotScreen');
@@ -462,32 +510,8 @@
         let currentUser = null;
 
         // ========================================
-        // LOGIN FUNCTIONS
+        // LOGIN
         // ========================================
-        function checkLogin() {
-            const savedUser = sessionStorage.getItem('starlink_user');
-            if (savedUser) {
-                try {
-                    currentUser = JSON.parse(savedUser);
-                    const users = getUsers();
-                    const exists = users.find(u => u.id === currentUser.id);
-                    if (exists) {
-                        console.log('✅ Session restored for user:', currentUser.username);
-                        showMainApp();
-                        return true;
-                    } else {
-                        sessionStorage.removeItem('starlink_user');
-                        currentUser = null;
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Invalid session data:', e);
-                    sessionStorage.removeItem('starlink_user');
-                    currentUser = null;
-                }
-            }
-            return false;
-        }
-
         function attemptLogin() {
             const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
@@ -505,21 +529,15 @@
                 loginSuccess.textContent = '✅ Login successful! Redirecting...';
                 loginSuccess.style.display = 'block';
                 currentUser = user;
-                sessionStorage.setItem('starlink_user', JSON.stringify(user));
-                console.log('✅ User logged in:', user.username, 'Role:', user.role);
-                console.log('✅ Session saved to sessionStorage');
-                setTimeout(() => {
-                    showMainApp();
-                }, 600);
+                sessionStorage.setItem(KEY_USER_SESSION, JSON.stringify(user));
+                setTimeout(showMainApp, 600);
             } else {
                 loginSuccess.style.display = 'none';
                 loginError.textContent = '❌ Invalid username or password.';
                 loginError.style.display = 'block';
                 passwordInput.value = '';
                 passwordInput.focus();
-                setTimeout(() => {
-                    loginError.style.display = 'none';
-                }, 3000);
+                setTimeout(() => { loginError.style.display = 'none'; }, 3000);
             }
         }
 
@@ -528,23 +546,16 @@
             forgotScreen.style.display = 'none';
             changePasswordScreen.style.display = 'none';
             mainApp.style.display = 'block';
-            if (userDisplay) {
-                userDisplay.textContent = '👤 ' + currentUser.username;
-            }
+            if (userDisplay) userDisplay.textContent = '👤 ' + currentUser.username;
             if (adminPanelBtn) {
                 adminPanelBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
             }
-            // Make sure currentUser is saved in session
-            if (currentUser) {
-                sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
-            }
-            if (typeof initMainApp === 'function') {
-                initMainApp();
-            }
+            sessionStorage.setItem(KEY_USER_SESSION, JSON.stringify(currentUser));
+            initMainApp();
         }
 
         function logout() {
-            sessionStorage.removeItem('starlink_user');
+            sessionStorage.removeItem(KEY_USER_SESSION);
             currentUser = null;
             mainApp.style.display = 'none';
             loginScreen.style.display = 'flex';
@@ -555,15 +566,14 @@
             loginError.style.display = 'none';
             loginSuccess.style.display = 'none';
             usernameInput.focus();
-            console.log('🚪 User logged out');
         }
 
         function showForgotScreen() {
             loginScreen.style.display = 'none';
             forgotScreen.style.display = 'flex';
             changePasswordScreen.style.display = 'none';
-            const forgotUsername = document.getElementById('forgotUsername');
-            if (forgotUsername) forgotUsername.focus();
+            const el = document.getElementById('forgotUsername');
+            if (el) el.focus();
         }
 
         function showChangePasswordScreen() {
@@ -585,141 +595,103 @@
             usernameInput.focus();
         }
 
-        // ========================================
-        // FIXED: HANDLE CHANGE PASSWORD
-        // ========================================
         function handleChangePassword() {
-            console.log('🔑 Change password button clicked');
-
             try {
-                const oldPassword = changePasswordOld.value.trim();
-                const newPassword = changePasswordNew.value.trim();
-                const confirmPassword = changePasswordConfirm.value.trim();
+                const oldP = changePasswordOld.value.trim();
+                const newP = changePasswordNew.value.trim();
+                const confP = changePasswordConfirm.value.trim();
 
                 changePasswordError.style.display = 'none';
                 changePasswordSuccess.style.display = 'none';
 
-                if (!oldPassword || !newPassword || !confirmPassword) {
+                if (!oldP || !newP || !confP) {
                     changePasswordError.textContent = '❌ Please fill in all fields.';
                     changePasswordError.style.display = 'block';
-                    console.log('❌ Empty fields detected');
                     return;
                 }
 
                 let targetUser = currentUser;
                 if (!targetUser) {
-                    const typedUsername = (usernameInput && usernameInput.value.trim()) || '';
-                    if (!typedUsername) {
-                        changePasswordError.textContent = '❌ Enter your username on the login screen first, then click "Change Password".';
+                    const typed = (usernameInput && usernameInput.value.trim()) || '';
+                    if (!typed) {
+                        changePasswordError.textContent = '❌ Enter your username on the login screen first.';
                         changePasswordError.style.display = 'block';
-                        console.log('❌ No username available to resolve target user');
                         return;
                     }
-                    targetUser = findUser(typedUsername);
+                    targetUser = findUser(typed);
                     if (!targetUser) {
                         changePasswordError.textContent = '❌ Username not found.';
                         changePasswordError.style.display = 'block';
-                        console.log('❌ Username not found:', typedUsername);
                         return;
                     }
                 } else {
-                    const freshUser = findUser(currentUser.username);
-                    if (freshUser) targetUser = freshUser;
+                    const fresh = findUser(currentUser.username);
+                    if (fresh) targetUser = fresh;
                 }
 
-                if (oldPassword !== targetUser.password) {
+                if (oldP !== targetUser.password) {
                     changePasswordError.textContent = '❌ Old password is incorrect.';
                     changePasswordError.style.display = 'block';
-                    changePasswordOld.value = '';
-                    changePasswordOld.focus();
-                    console.log('❌ Old password incorrect');
                     return;
                 }
 
-                if (newPassword !== confirmPassword) {
+                if (newP !== confP) {
                     changePasswordError.textContent = '❌ New passwords do not match.';
                     changePasswordError.style.display = 'block';
-                    changePasswordNew.value = '';
-                    changePasswordConfirm.value = '';
-                    changePasswordNew.focus();
-                    console.log('❌ New passwords do not match');
                     return;
                 }
 
-                if (newPassword.length < 4) {
+                if (newP.length < 4) {
                     changePasswordError.textContent = '❌ New password must be at least 4 characters.';
                     changePasswordError.style.display = 'block';
-                    console.log('❌ Password too short');
                     return;
                 }
 
-                console.log('🔄 Attempting to update password for user ID:', targetUser.id);
-                const success = updateUserPassword(targetUser.id, newPassword);
-
-                if (success) {
+                if (updateUserPassword(targetUser.id, newP)) {
                     if (currentUser && currentUser.id === targetUser.id) {
-                        currentUser.password = newPassword;
-                        sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
+                        currentUser.password = newP;
+                        sessionStorage.setItem(KEY_USER_SESSION, JSON.stringify(currentUser));
                     }
-
                     changePasswordSuccess.textContent = '✅ Password changed successfully!';
                     changePasswordSuccess.style.display = 'block';
-                    console.log('✅ Password changed for user:', targetUser.username);
-
-                    changePasswordOld.value = '';
-                    changePasswordNew.value = '';
-                    changePasswordConfirm.value = '';
-
                     setTimeout(() => {
                         showToast('✅ Password changed successfully!', 'success');
                         showLoginScreen();
                     }, 1500);
                 } else {
-                    changePasswordError.textContent = '❌ Failed to update password. Please try again.';
+                    changePasswordError.textContent = '❌ Failed to update password.';
                     changePasswordError.style.display = 'block';
-                    console.error('❌ Failed to update password for user:', targetUser.username);
                 }
             } catch (err) {
-                console.error('❌ Unexpected error in handleChangePassword:', err);
-                changePasswordError.textContent = '❌ Something went wrong. Please try again.';
+                changePasswordError.textContent = '❌ Something went wrong.';
                 changePasswordError.style.display = 'block';
             }
         }
 
         function handleForgotPassword() {
-            const forgotUsername = document.getElementById('forgotUsername');
-            const forgotError = document.getElementById('forgotError');
-            const forgotSuccess = document.getElementById('forgotSuccess');
+            const el = document.getElementById('forgotUsername');
+            const err = document.getElementById('forgotError');
+            const ok = document.getElementById('forgotSuccess');
+            if (!el) return;
 
-            if (!forgotUsername) return;
-
-            const username = forgotUsername.value.trim();
-            forgotError.style.display = 'none';
-            forgotSuccess.style.display = 'none';
+            const username = el.value.trim();
+            err.style.display = 'none';
+            ok.style.display = 'none';
 
             if (!username) {
-                forgotError.textContent = '❌ Please enter your username.';
-                forgotError.style.display = 'block';
+                err.textContent = '❌ Please enter your username.';
+                err.style.display = 'block';
                 return;
             }
 
-            const user = findUser(username);
-            if (user) {
-                if (currentUser && currentUser.role === 'admin') {
-                    forgotSuccess.innerHTML = '✅ As admin, you can change passwords in the Admin Panel.';
-                } else {
-                    forgotSuccess.innerHTML = '✅ Password reset link sent to admin. Please contact your administrator.';
-                }
-                forgotSuccess.style.display = 'block';
-                setTimeout(() => {
-                    showLoginScreen();
-                }, 3000);
+            if (findUser(username)) {
+                ok.textContent = '✅ Password reset link sent to admin. Please contact your administrator.';
+                ok.style.display = 'block';
+                setTimeout(showLoginScreen, 3000);
             } else {
-                forgotError.textContent = '❌ Username not found.';
-                forgotError.style.display = 'block';
-                setTimeout(() => {
-                    forgotError.style.display = 'none';
-                }, 3000);
+                err.textContent = '❌ Username not found.';
+                err.style.display = 'block';
+                setTimeout(() => { err.style.display = 'none'; }, 3000);
             }
         }
 
@@ -744,8 +716,8 @@
                     <div class="user-info">
                         <span class="user-icon">${user.role === 'admin' ? '👑' : '👤'}</span>
                         <div class="user-details">
-                            <span class="username">${user.username}</span>
-                            <span class="user-role">${user.role} ${isCurrent ? '• <span class="current-badge">(you)</span>' : ''}</span>
+                            <span class="username">${escapeHtml(user.username)}</span>
+                            <span class="user-role">${escapeHtml(user.role)} ${isCurrent ? '• <span class="current-badge">(you)</span>' : ''}</span>
                         </div>
                     </div>
                     <div class="user-actions">
@@ -767,20 +739,16 @@
         if (currentUser && currentUser.role === 'admin') {
             document.querySelectorAll('.btn-edit-user').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const id = parseInt(this.dataset.id);
-                    openUserModal(id);
+                    openUserModal(parseInt(this.dataset.id));
                 });
             });
-
             document.querySelectorAll('.btn-delete-user').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const id = parseInt(this.dataset.id);
                     if (confirm('Delete this user?')) {
                         if (deleteUser(id)) {
                             renderUserList();
-                            if (currentUser && currentUser.id === id) {
-                                logout();
-                            }
+                            if (currentUser && currentUser.id === id) logout();
                             showToast('✅ User deleted successfully', 'success');
                         }
                     }
@@ -790,12 +758,12 @@
     }
 
     function openAdminPanel() {
-        adminPanel.style.display = 'flex';
+        if (adminPanel) adminPanel.style.display = 'flex';
         renderUserList();
     }
 
     function closeAdminPanel() {
-        adminPanel.style.display = 'none';
+        if (adminPanel) adminPanel.style.display = 'none';
     }
 
     function openUserModal(userId = null) {
@@ -803,8 +771,7 @@
         editingUserId = userId;
 
         if (userId) {
-            const users = getUsers();
-            const user = users.find(u => u.id === userId);
+            const user = getUsers().find(u => u.id === userId);
             if (user) {
                 userModalTitle.textContent = '✏️ Edit User';
                 userModalUsername.value = user.username;
@@ -831,7 +798,7 @@
     function saveUser() {
         const username = userModalUsername.value.trim();
         const password = userModalPassword.value.trim();
-        const role = userModalRole.value;
+        const role     = userModalRole.value;
 
         if (!username || !password) {
             userModalError.textContent = '❌ Please fill in all fields.';
@@ -847,8 +814,8 @@
 
         if (editingUserId) {
             const users = getUsers();
-            const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== editingUserId);
-            if (existing) {
+            const exists = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== editingUserId);
+            if (exists) {
                 userModalError.textContent = '❌ Username already exists.';
                 userModalError.style.display = 'block';
                 return;
@@ -856,10 +823,8 @@
             if (updateUser(editingUserId, username, password, role)) {
                 if (currentUser && currentUser.id === editingUserId) {
                     currentUser = { ...currentUser, username, password, role };
-                    sessionStorage.setItem('starlink_user', JSON.stringify(currentUser));
-                    if (userDisplay) {
-                        userDisplay.textContent = '👤 ' + currentUser.username;
-                    }
+                    sessionStorage.setItem(KEY_USER_SESSION, JSON.stringify(currentUser));
+                    if (userDisplay) userDisplay.textContent = '👤 ' + currentUser.username;
                 }
                 closeUserModal();
                 renderUserList();
@@ -880,261 +845,239 @@
         }
     }
 
-    // ========================================
-    // CHECK IF USER CAN EDIT
-    // ========================================
     function userCanEdit() {
         return currentUser && currentUser.role === 'admin';
     }
 
     // ========================================
-    // EDITABLE COLUMN NAMES - ALL COLUMNS
+    // COLUMN NAME EDITS
     // ========================================
     let columnNameEdits = {};
 
     function loadColumnNameEdits() {
         try {
-            const saved = localStorage.getItem('starlink_column_names');
-            if (saved) {
-                columnNameEdits = JSON.parse(saved);
-                console.log('✅ Column name edits loaded:', columnNameEdits);
-            }
-        } catch (e) {
-            console.warn('⚠️ Failed to load column name edits:', e);
-        }
+            const s = localStorage.getItem(KEY_COLUMN_NAMES);
+            if (s) columnNameEdits = JSON.parse(s);
+        } catch (e) {}
     }
 
     function saveColumnNameEdits() {
         try {
-            localStorage.setItem('starlink_column_names', JSON.stringify(columnNameEdits));
-            console.log('✅ Column name edits saved:', columnNameEdits);
-        } catch (e) {
-            console.warn('⚠️ Failed to save column name edits:', e);
-        }
+            localStorage.setItem(KEY_COLUMN_NAMES, JSON.stringify(columnNameEdits));
+        } catch (e) {}
     }
 
     function getColumnLabel(col) {
-        if (columnNameEdits[col.key]) {
-            return columnNameEdits[col.key];
-        }
-        return col.label;
+        return columnNameEdits[col.key] || col.label;
     }
 
     function editColumnName(colKey) {
         const allCols = getAllColumns();
         const col = allCols.find(c => c.key === colKey);
-        if (!col) {
-            showToast('❌ Column not found', 'error');
-            return;
-        }
+        if (!col) { showToast('❌ Column not found', 'error'); return; }
 
-        const currentName = columnNameEdits[colKey] || col.label;
-        const newName = prompt('Enter new column name:', currentName);
+        const current = columnNameEdits[colKey] || col.label;
+        const newName = prompt('Enter new column name:', current);
         if (newName === null) return;
-        if (!newName.trim()) {
-            showToast('❌ Column name cannot be empty', 'error');
-            return;
-        }
+        if (!newName.trim()) { showToast('❌ Column name cannot be empty', 'error'); return; }
 
         columnNameEdits[colKey] = newName.trim().toUpperCase();
         saveColumnNameEdits();
-
-        col.label = newName.trim().toUpperCase();
-
         render();
-        showToast('✅ Column name updated to: ' + newName.trim().toUpperCase(), 'success');
+        showToast('✅ Column renamed to: ' + newName.trim().toUpperCase(), 'success');
         scheduleCloudSync();
     }
 
     // ========================================
-    // M-PESA MESSAGE PARSING
+    // M-PESA PARSING
     // ========================================
     function parseMpesaMessage(message) {
         if (!message || message.trim() === '') return null;
+        const r = { amount: null, date: null, time: null, transactionCost: null, fullMessage: message, transactionCode: null };
 
-        const result = {
-            amount: null,
-            date: null,
-            time: null,
-            transactionCost: null,
-            fullMessage: message,
-            transactionCode: null
-        };
+        const c = message.match(/^([A-Z0-9]+)/);
+        if (c) r.transactionCode = c[1];
 
-        const codeMatch = message.match(/^([A-Z0-9]+)/);
-        if (codeMatch) {
-            result.transactionCode = codeMatch[1];
-            console.log('🔑 Transaction code extracted:', result.transactionCode);
+        const a = message.match(/(?:KSh|KES|Ksh|ksh)\s*([\d,]+\.?\d*)\s*(?:sent|received|to|from)?/i);
+        if (a) r.amount = parseFloat(a[1].replace(/,/g, ''));
+
+        const f = message.match(/Transaction\s+cost[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
+        if (f) r.transactionCost = parseFloat(f[1].replace(/,/g, ''));
+        else {
+            const f2 = message.match(/(?:Fee|Charge|Cost)[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
+            if (f2) r.transactionCost = parseFloat(f2[1].replace(/,/g, ''));
         }
 
-        const amountMatch = message.match(/(?:KSh|KES|Ksh|ksh)\s*([\d,]+\.?\d*)\s*(?:sent|received|to|from)?/i);
-        if (amountMatch) {
-            result.amount = parseFloat(amountMatch[1].replace(/,/g, ''));
-            console.log('💰 Amount extracted:', result.amount);
-        }
+        const d = message.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
+        if (d) r.date = d[1];
 
-        const feeMatch = message.match(/Transaction\s+cost[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
-        if (feeMatch) {
-            result.transactionCost = parseFloat(feeMatch[1].replace(/,/g, ''));
-            console.log('💳 Transaction fee extracted:', result.transactionCost);
-        }
+        const t = message.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)?/i);
+        if (t) r.time = t[1];
 
-        if (result.transactionCost === null) {
-            const altFeeMatch = message.match(/(?:Fee|Charge|Cost)[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
-            if (altFeeMatch) {
-                result.transactionCost = parseFloat(altFeeMatch[1].replace(/,/g, ''));
-                console.log('💳 Transaction fee extracted (alt):', result.transactionCost);
-            }
-        }
-
-        const dateMatch = message.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
-        if (dateMatch) {
-            result.date = dateMatch[1];
-            console.log('📅 Date extracted:', result.date);
-        }
-
-        const timeMatch = message.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)?/i);
-        if (timeMatch) {
-            result.time = timeMatch[1];
-            console.log('🕐 Time extracted:', result.time);
-        }
-
-        return result;
+        return r;
     }
 
     // ========================================
-    // TRANSACTION FEES TRACKING
+    // TRANSACTION FEES
     // ========================================
     let transactionFees = {};
     let totalTransactionFees = 0;
 
     function updateTransactionFeesDisplay() {
-        const feesTotalEl = document.getElementById('transactionFeesTotal');
-        if (feesTotalEl) {
-            feesTotalEl.textContent = totalTransactionFees.toFixed(2);
-            console.log('💳 Transaction Fees Display Updated:', totalTransactionFees.toFixed(2));
-        }
-    }
-
-    function addTransactionFee(dateId, rowId, feeAmount) {
-        if (!feeAmount || feeAmount <= 0) {
-            const key = dateId + '_' + rowId;
-            if (transactionFees[key]) {
-                delete transactionFees[key];
-                console.log('🗑️ Fee removed for row:', key);
-            }
-            recalculateTotalFees();
-            updateTransactionFeesDisplay();
-            saveToStorage();
-            return;
-        }
-        const key = dateId + '_' + rowId;
-        transactionFees[key] = feeAmount;
-        recalculateTotalFees();
-        updateTransactionFeesDisplay();
-        saveToStorage();
-        scheduleCloudSync();
-        console.log('💳 Transaction fee added: KSh', feeAmount, 'Total:', totalTransactionFees);
+        const el = document.getElementById('transactionFeesTotal');
+        if (el) el.textContent = totalTransactionFees.toFixed(2);
     }
 
     function recalculateTotalFees() {
         totalTransactionFees = 0;
-        for (let key in transactionFees) {
-            totalTransactionFees += transactionFees[key];
-        }
-        console.log('📊 Total Transaction Fees Recalculated:', totalTransactionFees);
+        for (let k in transactionFees) totalTransactionFees += transactionFees[k];
         return totalTransactionFees;
     }
 
-    function getTransactionFee(dateId, rowId) {
-        const key = dateId + '_' + rowId;
-        return transactionFees[key] || 0;
+    // ========================================
+    // SUMMARY CARDS
+    // ========================================
+    function updateSummaryDisplay() {
+        const summary = buildSummary();
+        const v = document.getElementById('starlinkVirtualTotal');
+        if (v) v.textContent = summary.starlinkVirtualInvestment.toFixed(2);
+        const i = document.getElementById('starlinkInvestmentTotal');
+        if (i) i.textContent = summary.starlinkInvestmentTotal.toFixed(2);
+    }
+
+    function createSummaryDisplay() {
+        if (document.getElementById('summaryDisplayRow')) {
+            updateSummaryDisplay();
+            return;
+        }
+        const grid = document.querySelector('.totals-grid');
+        if (!grid) return;
+
+        const row = document.createElement('div');
+        row.id = 'summaryDisplayRow';
+        row.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; margin-top:12px;';
+
+        row.innerHTML = `
+            <div class="total-card" id="starlinkVirtualCard" style="
+                background: linear-gradient(135deg, rgba(200, 154, 91, 0.15) 0%, rgba(200, 154, 91, 0.05) 100%);
+                border: 1px solid rgba(200, 154, 91, 0.25);
+            ">
+                <span class="total-label">🏛️ STARLINK VIRTUAL</span>
+                <span class="total-value" id="starlinkVirtualTotal" style="color: var(--accent-brass);">0.00</span>
+            </div>
+            <div class="total-card" id="starlinkInvestmentCard" style="
+                background: linear-gradient(135deg, rgba(79, 182, 168, 0.12) 0%, rgba(79, 182, 168, 0.05) 100%);
+                border: 1px solid rgba(79, 182, 168, 0.2);
+            ">
+                <span class="total-label">📈 STARLINK INVESTMENT</span>
+                <span class="total-value" id="starlinkInvestmentTotal" style="color: var(--accent-teal-light);">0.00</span>
+            </div>
+        `;
+
+        const card = document.getElementById('grandTotalCard');
+        if (card) card.after(row);
+        else grid.appendChild(row);
+
+        updateSummaryDisplay();
+    }
+
+    function createTransactionFeesDisplay() {
+        if (document.getElementById('transactionFeesDisplay')) {
+            updateTransactionFeesDisplay();
+            return;
+        }
+        const grid = document.querySelector('.totals-grid');
+        if (!grid) return;
+
+        const feesCard = document.createElement('div');
+        feesCard.className = 'total-card';
+        feesCard.id = 'transactionFeesDisplay';
+        feesCard.innerHTML = `
+            <span class="total-label">💳 TRANSACTION FEES</span>
+            <span class="total-value" id="transactionFeesTotal" style="color: var(--accent-brass);">${totalTransactionFees.toFixed(2)}</span>
+        `;
+
+        const card = document.getElementById('grandTotalCard');
+        if (card) card.after(feesCard);
+        else grid.appendChild(feesCard);
+
+        updateTransactionFeesDisplay();
     }
 
     // ========================================
-    // MAIN APP
+    // MAIN APP CONSTANTS
     // ========================================
-    const STORAGE_KEY = 'starlinkExpenditureData_v27';
-
     const DEFAULT_COLUMNS = [
-        { key: 'starlinkGeneral', label: 'STARLINK GENERAL', isCustom: false },
-        { key: 'commonInvestment', label: 'COMMON INVESTMENT', isCustom: false },
+        { key: 'starlinkGeneral',   label: 'STARLINK GENERAL',   isCustom: false },
+        { key: 'commonInvestment',  label: 'COMMON INVESTMENT',  isCustom: false },
         { key: 'commonExpenditure', label: 'COMMON EXPENDITURE', isCustom: false },
-        { key: 'tokens', label: 'TOKENS', isCustom: false },
-        { key: 'fuelBike', label: 'FUEL/BIKE', isCustom: false },
-        { key: 'routers', label: 'ROUTERS', isCustom: false }
+        { key: 'tokens',            label: 'TOKENS',             isCustom: false },
+        { key: 'fuelBike',          label: 'FUEL/BIKE',          isCustom: false },
+        { key: 'routers',           label: 'ROUTERS',            isCustom: false }
     ];
 
-    const NUMERIC_KEYS = ['starlinkGeneral', 'commonInvestment', 'commonExpenditure', 'tokens', 'fuelBike', 'routers'];
+    const NUMERIC_KEYS = DEFAULT_COLUMNS.map(c => c.key);
 
     let customColumns = [];
     let data = [];
     let nextDateId = 1;
-    let nextRowId = 1;
-    let nextColId = 1;
+    let nextRowId  = 1;
+    let nextColId  = 1;
     let savedDates = {};
-    let editModes = {};
+    let editModes  = {};
     let savedCustomColumns = [];
 
     let dateFrom = '';
-    let dateTo = '';
+    let dateTo   = '';
 
-    const wrapper = document.getElementById('tableWrapper');
-    const dateFromInput = document.getElementById('dateFrom');
-    const dateToInput = document.getElementById('dateTo');
+    const wrapper        = document.getElementById('tableWrapper');
+    const dateFromInput  = document.getElementById('dateFrom');
+    const dateToInput    = document.getElementById('dateTo');
     const applyFilterBtn = document.getElementById('applyFilterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
-    const printBtn = document.getElementById('printPdfBtn');
-    const addDateBtn = document.getElementById('addDateBtn');
-    const addRowBtn = document.getElementById('addRowBtn');
-    const grandTotalEl = document.getElementById('grandTotal');
+    const printBtn       = document.getElementById('printPdfBtn');
+    const addDateBtn     = document.getElementById('addDateBtn');
+    const addRowBtn      = document.getElementById('addRowBtn');
+    const grandTotalEl   = document.getElementById('grandTotal');
 
-    const modal = document.getElementById('readMoreModal');
-    const modalBody = document.getElementById('modalBody');
+    const modal         = document.getElementById('readMoreModal');
+    const modalBody     = document.getElementById('modalBody');
     const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-    const themeToggle = document.getElementById('themeToggle');
+    const themeToggle   = document.getElementById('themeToggle');
 
     loadColumnNameEdits();
 
     // ========================================
-    // THEME TOGGLE
+    // THEME
     // ========================================
     function getStoredTheme() {
-        return localStorage.getItem('starlink_theme') || 'dark';
+        return localStorage.getItem(KEY_THEME) || 'dark';
     }
-
     function setStoredTheme(theme) {
-        localStorage.setItem('starlink_theme', theme);
+        localStorage.setItem(KEY_THEME, theme);
     }
-
     function applyTheme(theme) {
         if (theme === 'light') {
             document.body.classList.add('light-mode');
-            themeToggle.textContent = '🌙 Dark';
+            if (themeToggle) themeToggle.textContent = '🌙 Dark';
         } else {
             document.body.classList.remove('light-mode');
-            themeToggle.textContent = '☀️ Light';
+            if (themeToggle) themeToggle.textContent = '☀️ Light';
         }
         setStoredTheme(theme);
     }
-
     function toggleTheme() {
-        const currentTheme = getStoredTheme();
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        applyTheme(newTheme);
+        applyTheme(getStoredTheme() === 'dark' ? 'light' : 'dark');
     }
 
     // ========================================
-    // MAIN APP FUNCTIONS
+    // COLUMN HELPERS
     // ========================================
-    
     function getAllColumns() {
         const cols = [...DEFAULT_COLUMNS, ...customColumns, ...savedCustomColumns];
         return cols.map(col => {
-            if (columnNameEdits[col.key]) {
-                return { ...col, label: columnNameEdits[col.key] };
-            }
+            if (columnNameEdits[col.key]) return { ...col, label: columnNameEdits[col.key] };
             return col;
         });
     }
@@ -1147,55 +1090,38 @@
     }
 
     function formatNumber(v) {
-        let num = parseFloat(v);
-        if (isNaN(num)) return 0;
-        return Math.round(num * 100) / 100;
+        return safeNum(v);
     }
 
     function getColumnAmount(row, columnKey) {
+        if (!columnKey) return 0;
         const amountKey = columnKey + '_amount';
-        const value = row[amountKey];
-        if (value === undefined || value === null || value === '') return 0;
-        return formatNumber(value);
+        return safeNum(row[amountKey]);
     }
 
     function getRowTotal(row) {
         let sum = 0;
-        const allCols = getAllColumns();
-        allCols.forEach(col => {
-            if (isNumericColumn(col.key)) {
-                sum += getColumnAmount(row, col.key);
-            }
+        getAllColumns().forEach(col => {
+            if (isNumericColumn(col.key)) sum += getColumnAmount(row, col.key);
         });
         return sum;
     }
 
     function getDateGroupTotal(group) {
+        if (!group || !group.rows) return 0;
         let sum = 0;
-        if (!group.rows || group.rows.length === 0) return 0;
-        group.rows.forEach(row => {
-            sum += getRowTotal(row);
-        });
+        group.rows.forEach(row => { sum += getRowTotal(row); });
         return sum;
     }
 
     function getFilteredData() {
         let filtered = data;
         if (dateFrom && dateTo) {
-            filtered = filtered.filter(d => {
-                if (!d.date) return false;
-                return d.date >= dateFrom && d.date <= dateTo;
-            });
+            filtered = filtered.filter(d => d.date && d.date >= dateFrom && d.date <= dateTo);
         } else if (dateFrom) {
-            filtered = filtered.filter(d => {
-                if (!d.date) return false;
-                return d.date >= dateFrom;
-            });
+            filtered = filtered.filter(d => d.date && d.date >= dateFrom);
         } else if (dateTo) {
-            filtered = filtered.filter(d => {
-                if (!d.date) return false;
-                return d.date <= dateTo;
-            });
+            filtered = filtered.filter(d => d.date && d.date <= dateTo);
         }
         return sortDataByDate(filtered);
     }
@@ -1204,9 +1130,7 @@
         const totals = {};
         const allCols = getAllColumns();
         allCols.forEach(col => {
-            if (isNumericColumn(col.key)) {
-                totals[col.key] = 0;
-            }
+            if (isNumericColumn(col.key)) totals[col.key] = 0;
         });
         filteredData.forEach(group => {
             group.rows.forEach(row => {
@@ -1222,20 +1146,19 @@
 
     function computeGrandTotal(filteredData) {
         let sum = 0;
-        filteredData.forEach(group => {
-            sum += getDateGroupTotal(group);
-        });
+        filteredData.forEach(g => { sum += getDateGroupTotal(g); });
         return sum;
     }
 
     function truncateText(text, wordLimit = 3) {
         if (!text) return { short: text, full: text, needsReadMore: false };
         const words = text.trim().split(/\s+/);
-        if (words.length <= wordLimit) {
-            return { short: text, full: text, needsReadMore: false };
-        }
-        const shortText = words.slice(0, wordLimit).join(' ') + '...';
-        return { short: shortText, full: text, needsReadMore: true };
+        if (words.length <= wordLimit) return { short: text, full: text, needsReadMore: false };
+        return {
+            short: words.slice(0, wordLimit).join(' ') + '...',
+            full: text,
+            needsReadMore: true
+        };
     }
 
     function createEmptyRow() {
@@ -1248,29 +1171,36 @@
         return row;
     }
 
+    // ========================================
+    // CUSTOM COLUMNS
+    // ========================================
     function addCustomColumn() {
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can add columns', 'error');
+            return;
+        }
         const colName = prompt('Enter the name of the new expenditure column:', 'New Expenditure');
         if (!colName || colName.trim() === '') return;
 
         const key = 'temp_' + nextColId++ + '_' + colName.replace(/\s+/g, '_').toLowerCase();
-        const newCol = {
+        customColumns.push({
             key: key,
             label: colName.trim().toUpperCase(),
             isCustom: true,
             isTemp: true
-        };
-
-        customColumns.push(newCol);
+        });
 
         data.forEach(group => {
             group.rows.forEach(row => {
-                row[newCol.key + '_desc'] = '';
-                row[newCol.key + '_transaction'] = '';
-                row[newCol.key + '_amount'] = '';
+                row[key + '_desc'] = '';
+                row[key + '_transaction'] = '';
+                row[key + '_amount'] = '';
             });
         });
 
         render();
+        scheduleCloudSync();
+        showToast('✅ Column added: ' + colName.trim().toUpperCase(), 'success');
     }
 
     function saveCustomColumn(colKey) {
@@ -1287,9 +1217,9 @@
 
         data.forEach(group => {
             group.rows.forEach(row => {
-                row[savedCol.key + '_desc'] = row[colToSave.key + '_desc'] || '';
+                row[savedCol.key + '_desc']        = row[colToSave.key + '_desc'] || '';
                 row[savedCol.key + '_transaction'] = row[colToSave.key + '_transaction'] || '';
-                row[savedCol.key + '_amount'] = row[colToSave.key + '_amount'] || '';
+                row[savedCol.key + '_amount']      = row[colToSave.key + '_amount'] || '';
             });
         });
 
@@ -1305,12 +1235,19 @@
         });
 
         render();
+        scheduleCloudSync();
+        showToast('✅ Column saved permanently', 'success');
     }
 
     function removeCustomColumn(colKey) {
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can delete columns', 'error');
+            return;
+        }
+
         const savedIndex = savedCustomColumns.findIndex(c => c.key === colKey);
         if (savedIndex !== -1) {
-            if (!confirm('Delete this saved column? All data in this column will be lost.')) return;
+            if (!confirm('Delete this saved column and all its data?')) return;
             savedCustomColumns.splice(savedIndex, 1);
             data.forEach(group => {
                 group.rows.forEach(row => {
@@ -1320,12 +1257,14 @@
                 });
             });
             render();
+            scheduleCloudSync();
+            showToast('✅ Column deleted', 'success');
             return;
         }
 
         const tempIndex = customColumns.findIndex(c => c.key === colKey);
         if (tempIndex !== -1) {
-            if (!confirm('Delete this temporary column? Data will be lost if not saved.')) return;
+            if (!confirm('Delete this temporary column and all its data?')) return;
             customColumns.splice(tempIndex, 1);
             data.forEach(group => {
                 group.rows.forEach(row => {
@@ -1335,48 +1274,46 @@
                 });
             });
             render();
+            scheduleCloudSync();
+            showToast('✅ Column deleted', 'success');
         }
     }
 
     // ========================================
-    // SAVE DATE ENTRY - WITH DUPLICATE CHECK
+    // DATE / ROW OPERATIONS
     // ========================================
     function saveDateEntry(dateId) {
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can save', 'error');
+            return;
+        }
         const group = data.find(d => d.id === dateId);
         if (!group) return;
 
-        // Check for duplicate transactions
-        const duplicateCode = checkForDuplicateTransactions(dateId);
-        if (duplicateCode) {
-            showToast(`❌ Save error: Duplicate transaction message found! Transaction code: ${duplicateCode}`, 'error');
-            console.log('❌ Duplicate transaction detected:', duplicateCode);
+        const dup = checkForDuplicateTransactions(dateId);
+        if (dup) {
+            showToast('❌ Duplicate transaction found: ' + dup, 'error');
             return;
         }
 
-        const saveBtn = document.querySelector(`.save-btn[data-date-id="${dateId}"]`);
-        if (saveBtn) {
-            saveBtn.textContent = '✓ Saved';
-            saveBtn.classList.add('saved');
+        const btn = document.querySelector(`.save-btn[data-date-id="${dateId}"]`);
+        if (btn) {
+            btn.textContent = '✓ Saved';
+            btn.classList.add('saved');
             setTimeout(() => {
-                saveBtn.textContent = '💾 Save';
-                saveBtn.classList.remove('saved');
+                btn.textContent = '💾 Save';
+                btn.classList.remove('saved');
             }, 2000);
         }
 
-        let feesCapturedCount = 0;
-        let feesCapturedTotal = 0;
+        let feesCount = 0, feesTotal = 0;
         const allCols = getAllColumns();
 
         const keysToRemove = [];
         for (let key in transactionFees) {
-            if (key.startsWith(dateId + '_')) {
-                keysToRemove.push(key);
-            }
+            if (key.startsWith(dateId + '_')) keysToRemove.push(key);
         }
-        keysToRemove.forEach(key => {
-            delete transactionFees[key];
-        });
-        console.log('🗑️ Cleared existing fees for date:', dateId);
+        keysToRemove.forEach(k => delete transactionFees[k]);
 
         group.rows.forEach(row => {
             let rowFee = null;
@@ -1384,27 +1321,23 @@
                 const transKey = col.key + '_transaction';
                 const transVal = row[transKey];
                 if (transVal && transVal.trim() !== '') {
-                    console.log('🔍 Processing transaction:', transVal.substring(0, 80) + '...');
                     const parsed = parseMpesaMessage(transVal);
                     if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
                         rowFee = parsed.transactionCost;
-                        console.log('✅ Fee found: KSh', rowFee);
                     }
                 }
             });
-            
             if (rowFee !== null && rowFee > 0) {
-                const key = dateId + '_' + row.id;
-                transactionFees[key] = rowFee;
-                feesCapturedCount++;
-                feesCapturedTotal += rowFee;
-                console.log('✅ Fee captured for row', row.id, ':', rowFee);
+                transactionFees[dateId + '_' + row.id] = rowFee;
+                feesCount++;
+                feesTotal += rowFee;
             }
             delete row._pendingFee;
         });
 
         recalculateTotalFees();
         updateTransactionFeesDisplay();
+        updateSummaryDisplay();
 
         savedDates[dateId] = true;
         editModes[dateId] = false;
@@ -1413,8 +1346,8 @@
         saveToStorage();
         scheduleCloudSync();
 
-        if (feesCapturedCount > 0) {
-            showToast(`✅ Date saved! ${feesCapturedCount} fee(s) captured: KSh ${feesCapturedTotal.toFixed(2)}`, 'success');
+        if (feesCount > 0) {
+            showToast(`✅ Saved! ${feesCount} fee(s): KSh ${feesTotal.toFixed(2)}`, 'success');
         } else {
             showToast('✅ Date saved successfully!', 'success');
         }
@@ -1426,23 +1359,8 @@
             return;
         }
         editModes[dateId] = !editModes[dateId];
-        if (editModes[dateId]) {
-            savedDates[dateId] = false;
-        }
+        if (editModes[dateId]) savedDates[dateId] = false;
         render();
-    }
-
-    function openReadMoreModal(text) {
-        if (!modal) return;
-        modalBody.innerHTML = `<p class="modal-text">${text}</p>`;
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeReadMoreModal() {
-        if (!modal) return;
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
     }
 
     function addTransactionRow(dateId) {
@@ -1451,43 +1369,117 @@
             return;
         }
         const group = data.find(d => d.id === dateId);
-        if (!group) {
-            alert('Date entry not found');
-            return;
-        }
-
-        const newRow = createEmptyRow();
-        group.rows.push(newRow);
+        if (!group) { showToast('❌ Date entry not found', 'error'); return; }
+        group.rows.push(createEmptyRow());
         render();
         scheduleCloudSync();
     }
 
-    // ========================================
-    // DEBOUNCED SAVE
-    // ========================================
-    let saveTimeout = null;
+    function addDateEntry() {
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can add dates', 'error');
+            return;
+        }
 
-    function debouncedSave() {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-            saveToStorage();
-        }, 500);
+        const dateInput = prompt('Enter date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+        if (!dateInput) return;
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+            alert('Please use YYYY-MM-DD format');
+            return;
+        }
+
+        if (data.some(d => d.date === dateInput)) {
+            alert('❌ This date already exists!');
+            return;
+        }
+
+        const newGroup = {
+            id: nextDateId++,
+            date: dateInput,
+            rows: [createEmptyRow()]
+        };
+
+        data.push(newGroup);
+        data = sortDataByDate(data);
+        render();
+        scheduleCloudSync();
+        showToast('✅ Date added successfully!', 'success');
+    }
+
+    function handleDeleteRow(e) {
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can delete rows', 'error');
+            return;
+        }
+        const dateId = parseInt(e.currentTarget.dataset.dateId);
+        const rowId  = parseInt(e.currentTarget.dataset.rowId);
+
+        if (!confirm('⚠️ Delete this transaction? This will also delete it from the cloud.')) return;
+
+        const group = data.find(d => d.id === dateId);
+        if (!group) return;
+
+        const key = dateId + '_' + rowId;
+        if (transactionFees[key]) delete transactionFees[key];
+        recalculateTotalFees();
+        updateTransactionFeesDisplay();
+
+        group.rows = group.rows.filter(r => r.id !== rowId);
+        render();
+        saveToStorage();
+        scheduleCloudSync();
+        showToast('✅ Transaction deleted', 'success');
+    }
+
+    function handleDeleteDate(e) {
+        if (!userCanEdit()) {
+            showToast('⚠️ Only admin can delete dates', 'error');
+            return;
+        }
+        const dateId = parseInt(e.currentTarget.dataset.dateId);
+
+        if (!confirm('⚠️ Delete this entire date entry and all its transactions?')) return;
+
+        const keysToRemove = [];
+        for (let key in transactionFees) {
+            if (key.startsWith(dateId + '_')) keysToRemove.push(key);
+        }
+        keysToRemove.forEach(k => delete transactionFees[k]);
+
+        data = data.filter(d => d.id !== dateId);
+        delete savedDates[dateId];
+        delete editModes[dateId];
+
+        recalculateTotalFees();
+        updateTransactionFeesDisplay();
+
+        render();
+        saveToStorage();
+        scheduleCloudSync();
+        showToast('✅ Date entry deleted', 'success');
     }
 
     // ========================================
-    // HANDLE INPUT CHANGE - FIXED: Empty transaction clears amount
+    // INPUT HANDLING
     // ========================================
+    let saveTimeout = null;
+    function debouncedSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveToStorage, 500);
+    }
+
     function handleInputChange(e) {
         if (!userCanEdit()) {
             showToast('⚠️ Only admin can edit records', 'error');
             return;
         }
-        
-        const input = e.target;
+
+        const input  = e.target;
         const dateId = parseInt(input.dataset.dateId);
-        const rowId = parseInt(input.dataset.rowId);
-        const key = input.dataset.key;
-        const value = input.value;
+        const rowId  = parseInt(input.dataset.rowId);
+        const key    = input.dataset.key;
+        const value  = input.value;
 
         const group = data.find(d => d.id === dateId);
         if (!group) return;
@@ -1496,35 +1488,24 @@
 
         row[key] = value;
 
-        // Keep tooltip in sync for transaction references
         if (key.endsWith('_transaction')) {
             input.title = value;
-        }
-        
-        // 🔥 FIX: If transaction reference field changes
-        if (key.endsWith('_transaction')) {
             const amountKey = key.replace('_transaction', '_amount');
-            
-            // If transaction reference is empty, clear the amount
             if (!value || value.trim() === '') {
                 row[amountKey] = '';
                 row._pendingFee = null;
-                console.log('🗑️ Transaction reference cleared - amount cleared');
             } else if (value.length > 5) {
-                console.log('📨 Transaction message detected:', value.substring(0, 80) + '...');
                 const parsed = parseMpesaMessage(value);
                 if (parsed) {
                     if (parsed.amount !== null && parsed.amount > 0) {
                         row[amountKey] = parsed.amount.toString();
-                        console.log('💰 Amount auto-filled:', parsed.amount);
                         showToast('💰 Amount extracted: KSh ' + parsed.amount.toFixed(2), 'success');
                     } else {
                         row[amountKey] = '';
                     }
                     if (parsed.transactionCost !== null && parsed.transactionCost > 0) {
                         row._pendingFee = parsed.transactionCost;
-                        console.log('💳 Transaction fee detected (will be added on Save):', parsed.transactionCost);
-                        showToast('💳 Transaction fee detected: KSh ' + parsed.transactionCost.toFixed(2) + ' (click Save to capture)', 'info');
+                        showToast('💳 Fee detected: KSh ' + parsed.transactionCost.toFixed(2), 'info');
                     } else {
                         row._pendingFee = null;
                     }
@@ -1533,31 +1514,24 @@
                     row._pendingFee = null;
                 }
             } else {
-                // Short text - not a valid message, clear amount
                 row[amountKey] = '';
                 row._pendingFee = null;
             }
         }
-        
+
         updateTotalsOnly();
+        updateSummaryDisplay();
         debouncedSave();
-        
-        if (key.includes('_amount')) {
-            scheduleCloudSync();
-        }
+
+        if (key.includes('_amount')) scheduleCloudSync();
     }
 
-    // ========================================
-    // UPDATE TOTALS ONLY
-    // ========================================
     function updateTotalsOnly() {
-        const filtered = getFilteredData();
+        const filtered   = getFilteredData();
         const allColumns = getAllColumns();
-        
+
         const grandTotal = computeGrandTotal(filtered);
-        if (grandTotalEl) {
-            grandTotalEl.textContent = grandTotal.toFixed(2);
-        }
+        if (grandTotalEl) grandTotalEl.textContent = grandTotal.toFixed(2);
 
         const rowTotalCells = document.querySelectorAll('.row-total-col');
         let rowIndex = 0;
@@ -1579,89 +1553,59 @@
 
         const colTotals = computeColumnTotals(filtered);
         const colTotalCells = document.querySelectorAll('.col-total-row td[data-label]');
-        
         if (colTotalCells.length > 0) {
             let colIndex = 0;
             allColumns.forEach(col => {
                 if (isNumericColumn(col.key)) {
-                    const cellIndex = colIndex + 1;
-                    if (colTotalCells[cellIndex]) {
-                        colTotalCells[cellIndex].textContent = (colTotals[col.key] || 0).toFixed(2);
+                    const cellIdx = colIndex + 1;
+                    if (colTotalCells[cellIdx]) {
+                        colTotalCells[cellIdx].textContent = (colTotals[col.key] || 0).toFixed(2);
                     }
                     colIndex++;
                 }
             });
-            
             const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
             const lastCell = colTotalCells[colTotalCells.length - 1];
-            if (lastCell) {
-                lastCell.textContent = totalColSum.toFixed(2);
-            }
+            if (lastCell) lastCell.textContent = totalColSum.toFixed(2);
         }
-        
+
         recalculateTotalFees();
         updateTransactionFeesDisplay();
-        console.log('💳 Fees updated in totals:', totalTransactionFees);
     }
 
     // ========================================
-    // CLOUD SYNC DEBOUNCER
+    // CLOUD SYNC SCHEDULER
     // ========================================
     let cloudSyncTimer = null;
-
     function scheduleCloudSync() {
         if (!SYNC_ENABLED || !supabaseClient) return;
         clearTimeout(cloudSyncTimer);
         cloudSyncTimer = setTimeout(() => {
+            data = sortDataByDate(data);
             syncToCloud(false);
         }, 1200);
     }
 
     // ========================================
-    // SETUP COLUMN NAME EDIT LISTENERS
-    // ========================================
-    function setupColumnNameEditListeners() {
-        document.querySelectorAll('.edit-name-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const colKey = this.dataset.colKey;
-                editColumnName(colKey);
-            });
-        });
-    }
-
-    // ========================================
-    // SETUP SEARCH FUNCTIONALITY
+    // SEARCH
     // ========================================
     function setupSearchFunctionality() {
         const searchInput = document.getElementById('searchInput');
         const clearSearchBtn = document.getElementById('clearSearchBtn');
-        const searchResultInfo = document.getElementById('searchResultInfo');
-
-        if (!searchInput) {
-            console.warn('⚠️ Search input not found in DOM');
-            return;
-        }
-
-        if (searchInput._searchInitialized) return;
+        if (!searchInput || searchInput._searchInitialized) return;
         searchInput._searchInitialized = true;
 
-        let searchTimer = null;
-
+        let timer = null;
         searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                performSearch(this.value.trim());
-            }, 250);
+            clearTimeout(timer);
+            timer = setTimeout(() => performSearch(this.value.trim()), 250);
         });
-
         searchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 this.value = '';
                 performSearch('');
             }
         });
-
         if (clearSearchBtn) {
             clearSearchBtn.addEventListener('click', function() {
                 searchInput.value = '';
@@ -1671,83 +1615,78 @@
         }
     }
 
-    // ========================================
-    // PERFORM SEARCH
-    // ========================================
     function performSearch(query) {
         const clearSearchBtn = document.getElementById('clearSearchBtn');
-        const searchResultInfo = document.getElementById('searchResultInfo');
+        const info = document.getElementById('searchResultInfo');
 
-        // Clear previous highlights
         document.querySelectorAll('tr.row-highlight').forEach(el => el.classList.remove('row-highlight'));
         document.querySelectorAll('td.cell-highlight').forEach(el => el.classList.remove('cell-highlight'));
 
-        if (clearSearchBtn) {
-            clearSearchBtn.style.display = query ? 'inline-block' : 'none';
-        }
+        if (clearSearchBtn) clearSearchBtn.style.display = query ? 'inline-block' : 'none';
 
         if (!query) {
-            if (searchResultInfo) {
-                searchResultInfo.style.display = 'none';
-                searchResultInfo.textContent = '';
-            }
+            if (info) { info.style.display = 'none'; info.textContent = ''; }
             return;
         }
 
-        const upperQuery = query.toUpperCase();
+        const q = query.toUpperCase();
         let matchCount = 0;
         let firstMatch = null;
 
-        // Search through all transaction inputs and displays
-        const transElements = document.querySelectorAll('.trans-input, .desc-display[data-type="transaction"], .desc-display[data-full-text]');
-
-        transElements.forEach(el => {
+        document.querySelectorAll('.trans-input, .desc-display[data-type="transaction"]').forEach(el => {
             const text = (el.value || el.textContent || el.dataset.fullText || '').toUpperCase();
-            if (text.includes(upperQuery)) {
+            if (text.includes(q)) {
                 matchCount++;
-
-                // Highlight the row
                 const row = el.closest('tr');
                 if (row && !row.classList.contains('row-highlight')) {
                     row.classList.add('row-highlight');
                     if (!firstMatch) firstMatch = row;
                 }
-
-                // Highlight the cell
                 const cell = el.closest('td');
                 if (cell) cell.classList.add('cell-highlight');
             }
         });
 
-        if (searchResultInfo) {
+        if (info) {
             if (matchCount > 0) {
-                searchResultInfo.textContent = `Found ${matchCount} match${matchCount > 1 ? 'es' : ''}`;
-                searchResultInfo.classList.remove('no-result');
-                searchResultInfo.style.display = 'inline-block';
+                info.textContent = `Found ${matchCount} match${matchCount > 1 ? 'es' : ''}`;
+                info.classList.remove('no-result');
+                info.style.display = 'inline-block';
             } else {
-                searchResultInfo.textContent = 'No matches found';
-                searchResultInfo.classList.add('no-result');
-                searchResultInfo.style.display = 'inline-block';
+                info.textContent = 'No matches found';
+                info.classList.add('no-result');
+                info.style.display = 'inline-block';
             }
         }
 
-        // Scroll to first match
-        if (firstMatch) {
-            firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     // ========================================
-    // RENDER - REMOVED COLUMN DELETE BUTTON ONLY
+    // READ MORE MODAL
+    // ========================================
+    function openReadMoreModal(text) {
+        if (!modal || !modalBody) return;
+        modalBody.innerHTML = `<p class="modal-text">${escapeHtml(text)}</p>`;
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeReadMoreModal() {
+        if (!modal) return;
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    // ========================================
+    // RENDER
     // ========================================
     function render() {
-        const filtered = getFilteredData();
+        const filtered   = getFilteredData();
         const allColumns = getAllColumns();
-        const canEdit = userCanEdit();
+        const canEdit    = userCanEdit();
 
-        let html = '<table>';
-
-        html += '<tbody>';
+        let html = '<table><tbody>';
 
         if (filtered.length === 0) {
             html += `<tr><td colspan="${allColumns.length + 3}" class="empty-state">
@@ -1756,34 +1695,32 @@
                 <div style="font-size:0.85rem; margin-top:8px; color:var(--text-dim);">Adjust your date filter or add new entries</div>
             </td></tr>`;
         } else {
-            filtered.forEach((group) => {
-                const isSaved = savedDates[group.id] || false;
+            filtered.forEach(group => {
+                const isSaved   = savedDates[group.id] || false;
                 const isEditing = editModes[group.id] || false;
                 const showEditMode = isEditing || !isSaved;
 
-                html += `<tr class="date-header-row">`;
-                html += `<td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
+                html += `<tr class="date-header-row"><td colspan="${allColumns.length + 3}" style="padding:8px 16px;">`;
                 html += `<div class="date-label">
-                    <span class="date-badge">📅 ${group.date || 'No date'}</span>
+                    <span class="date-badge">📅 ${escapeHtml(group.date || 'No date')}</span>
                     ${canEdit ? `<button class="add-col-btn-header" title="Add a new custom expenditure column">➕ Add Expenditure</button>` : ''}
                 </div>`;
-                html += `</td>`;
-                html += `</tr>`;
+                html += `</td></tr>`;
 
                 html += `<tr class="date-column-header">`;
                 html += `<td style="min-width:80px; font-weight:700; color:var(--accent-brass); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--table-header);"></td>`;
                 allColumns.forEach(col => {
-                    const isCustom = col.isCustom || false;
+                    const isCustom   = col.isCustom || false;
                     const isSavedCol = col.isSaved || false;
-                    const colKey = col.key;
-                    const colLabel = getColumnLabel(col);
+                    const colLabel   = getColumnLabel(col);
 
-                    html += `<td style="min-width:120px; text-align:center; background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}" data-col-key="${colKey}">
+                    html += `<td style="min-width:120px; text-align:center; background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}" data-col-key="${col.key}">
                         <div class="col-header-with-edit">
-                            <span class="col-label" data-col-key="${colKey}" data-label="${colLabel}">${colLabel}</span>
+                            <span class="col-label" data-col-key="${col.key}" data-label="${escapeHtml(colLabel)}">${escapeHtml(colLabel)}</span>
                             ${isCustom ? `<span style="font-weight:400; font-size:0.55rem; color:#c89a5b;">${isSavedCol ? '(saved)' : '(temp)'}</span>` : ''}
                             ${canEdit ? `<div class="col-edit-actions">
-                                <button class="edit-name-btn" data-col-key="${colKey}" title="Edit column name">✏️</button>
+                                <button class="edit-name-btn" data-col-key="${col.key}" title="Edit column name">✏️</button>
+                                ${isCustom ? `<button class="remove-col-btn" data-col-key="${col.key}" title="Delete this column">🗑️</button>` : ''}
                             </div>` : ''}
                         </div>
                     </td>`;
@@ -1806,56 +1743,49 @@
                         html += `<td style="background:var(--bg-card); text-align:center; color:var(--text-dim); font-size:0.7rem;" data-label="">▸</td>`;
 
                         allColumns.forEach(col => {
-                            const isCustom = col.isCustom || false;
+                            const isCustom   = col.isCustom || false;
                             const isSavedCol = col.isSaved || false;
-                            const descKey = col.key + '_desc';
-                            const transKey = col.key + '_transaction';
-                            const amountKey = col.key + '_amount';
-                            const colLabel = getColumnLabel(col);
+                            const descKey    = col.key + '_desc';
+                            const transKey   = col.key + '_transaction';
+                            const amountKey  = col.key + '_amount';
+                            const colLabel   = getColumnLabel(col);
 
-                            const descVal = row[descKey] || '';
-                            const transVal = row[transKey] || '';
-                            const amountVal = row[amountKey] || '';
+                            const descVal    = row[descKey]   || '';
+                            const transVal   = row[transKey]  || '';
+                            const amountVal  = row[amountKey] || '';
 
                             let descDisplay = '';
                             if (showEditMode && canEdit) {
-                                descDisplay = `
-                                    <textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${descVal}</textarea>
-                                `;
+                                descDisplay = `<textarea class="desc-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${descKey}" placeholder="Description" rows="1">${escapeHtml(descVal)}</textarea>`;
                             } else {
                                 const truncated = truncateText(descVal, 3);
                                 if (truncated.needsReadMore) {
-                                    descDisplay = `
-                                        <div class="desc-display" data-full-text="${descVal.replace(/"/g, '&quot;')}">
-                                            <span class="short-text">${truncated.short}</span>
-                                            <button class="read-more-btn" data-full-text="${descVal.replace(/"/g, '&quot;')}">readmore</button>
-                                        </div>
-                                    `;
+                                    descDisplay = `<div class="desc-display" data-full-text="${escapeHtml(descVal)}">
+                                        <span class="short-text">${escapeHtml(truncated.short)}</span>
+                                        <button class="read-more-btn" data-full-text="${escapeHtml(descVal)}">readmore</button>
+                                    </div>`;
                                 } else {
-                                    descDisplay = `
-                                        <div class="desc-display" data-full-text="${descVal.replace(/"/g, '&quot;')}">
-                                            ${descVal || '-'}
-                                        </div>
-                                    `;
+                                    descDisplay = `<div class="desc-display" data-full-text="${escapeHtml(descVal)}">${escapeHtml(descVal) || '-'}</div>`;
                                 }
                             }
 
-                            html += `<td class="expenditure-cell" style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${colLabel}">
+                            html += `<td class="expenditure-cell" style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${escapeHtml(colLabel)}">
                                 <div class="column-group ${isCustom ? 'custom-column' : ''}">
                                     <span class="field-header">Description</span>
                                     ${descDisplay}
                                     <span class="field-header">Transaction Reference</span>
-                                    ${showEditMode && canEdit ? 
-                                        `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1" title="${transVal.replace(/"/g, '&quot;')}">${transVal}</textarea>` : 
-                                        `<div class="desc-display" data-full-text="${transVal.replace(/"/g, '&quot;')}" data-type="transaction" title="${transVal.replace(/"/g, '&quot;')}">${transVal || '-'}</div>`}
+                                    ${showEditMode && canEdit
+                                        ? `<textarea class="trans-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${transKey}" placeholder="Transaction Reference" rows="1" title="${escapeHtml(transVal)}">${escapeHtml(transVal)}</textarea>`
+                                        : `<div class="desc-display" data-full-text="${escapeHtml(transVal)}" data-type="transaction" title="${escapeHtml(transVal)}">${escapeHtml(transVal) || '-'}</div>`}
                                     <span class="field-header">Amount</span>
-                                    ${showEditMode && canEdit ? 
-                                        `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${amountVal}" placeholder="0">` : 
-                                        `<div class="amount-display">${formatNumber(amountVal).toFixed(2)}</div>`}
-                                    ${isCustom && canEdit ? 
-                                        `<div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
-                                            ${!isSavedCol ? `<button class="save-col-btn" data-col-key="${col.key}" title="Save this column permanently">💾 Save</button>` : ''}
-                                        </div>` : ''}
+                                    ${showEditMode && canEdit
+                                        ? `<input type="text" class="amount-input" data-date-id="${group.id}" data-row-id="${row.id}" data-key="${amountKey}" value="${escapeHtml(amountVal)}" placeholder="0">`
+                                        : `<div class="amount-display">${formatNumber(amountVal).toFixed(2)}</div>`}
+                                    ${isCustom && canEdit && !isSavedCol
+                                        ? `<div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                                            <button class="save-col-btn" data-col-key="${col.key}" title="Save this column permanently">💾 Save</button>
+                                        </div>`
+                                        : ''}
                                 </div>
                             </td>`;
                         });
@@ -1880,11 +1810,9 @@
                     <div class="date-total-right">
                         <span class="date-total-label">Date Total Amount:</span>
                         <span class="date-total-amount">${dateTotal.toFixed(2)}</span>
-                        ${canEdit ? `
-                            <div class="date-total-add-row">
-                                <button class="add-row-inline-btn" data-date-id="${group.id}">➕ Add Row</button>
-                            </div>
-                        ` : ''}
+                        ${canEdit ? `<div class="date-total-add-row">
+                            <button class="add-row-inline-btn" data-date-id="${group.id}">➕ Add Row</button>
+                        </div>` : ''}
                     </div>
                 </div>`;
                 html += `</td>`;
@@ -1900,25 +1828,22 @@
         allColumns.forEach(col => {
             const colLabel = getColumnLabel(col);
             if (isNumericColumn(col.key)) {
-                const val = colTotals[col.key] || 0;
-                html += `<td class="column-total-cell" data-label="${colLabel}" style="color:var(--text-primary);">${val.toFixed(2)}</td>`;
+                html += `<td class="column-total-cell" data-label="${escapeHtml(colLabel)}" style="color:var(--text-primary);">${(colTotals[col.key] || 0).toFixed(2)}</td>`;
             } else {
-                html += `<td class="column-total-cell" data-label="${colLabel}" style="color:var(--text-primary);">0.00</td>`;
+                html += `<td class="column-total-cell" data-label="${escapeHtml(colLabel)}" style="color:var(--text-primary);">0.00</td>`;
             }
         });
         const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
         html += `<td class="column-total-cell grand-column-total" data-label="Total" style="font-weight:700; color:var(--accent-teal);">${totalColSum.toFixed(2)}</td>`;
         html += `<td></td>`;
         html += `</tr>`;
-
-        html += '</tfoot>';
-        html += '</tbody>';
-        html += '</table>';
+        html += '</tfoot></tbody></table>';
 
         wrapper.innerHTML = html;
 
-        const grandTotal = computeGrandTotal(filtered);
-        grandTotalEl.textContent = grandTotal.toFixed(2);
+        if (grandTotalEl) {
+            grandTotalEl.textContent = computeGrandTotal(filtered).toFixed(2);
+        }
 
         document.querySelectorAll('.desc-input, .trans-input, .amount-input').forEach(input => {
             input.addEventListener('input', handleInputChange);
@@ -1928,10 +1853,7 @@
             textarea.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
-                // Keep tooltip in sync for transaction references
-                if (this.classList.contains('trans-input')) {
-                    this.title = this.value;
-                }
+                if (this.classList.contains('trans-input')) this.title = this.value;
             });
             setTimeout(() => {
                 textarea.style.height = 'auto';
@@ -1942,19 +1864,14 @@
         document.querySelectorAll('.read-more-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                const fullText = this.dataset.fullText || '';
-                if (fullText) {
-                    openReadMoreModal(fullText);
-                }
+                openReadMoreModal(this.dataset.fullText || '');
             });
         });
 
         document.querySelectorAll('.desc-display').forEach(el => {
             el.addEventListener('click', function() {
-                const fullText = this.dataset.fullText || '';
-                if (fullText && fullText !== '-') {
-                    openReadMoreModal(fullText);
-                }
+                const t = this.dataset.fullText || '';
+                if (t && t !== '-') openReadMoreModal(t);
             });
         });
 
@@ -1964,15 +1881,13 @@
 
         document.querySelectorAll('.date-total-row .save-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const dateId = parseInt(e.target.dataset.dateId);
-                saveDateEntry(dateId);
+                saveDateEntry(parseInt(e.currentTarget.dataset.dateId));
             });
         });
 
         document.querySelectorAll('.date-total-row .edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const dateId = parseInt(e.target.dataset.dateId);
-                editDateEntry(dateId);
+                editDateEntry(parseInt(e.currentTarget.dataset.dateId));
             });
         });
 
@@ -1982,8 +1897,7 @@
 
         document.querySelectorAll('.date-total-row .add-row-inline-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const dateId = parseInt(e.target.dataset.dateId);
-                addTransactionRow(dateId);
+                addTransactionRow(parseInt(e.currentTarget.dataset.dateId));
             });
         });
 
@@ -1993,137 +1907,45 @@
 
         document.querySelectorAll('.save-col-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const colKey = e.target.dataset.colKey;
-                saveCustomColumn(colKey);
+                saveCustomColumn(e.currentTarget.dataset.colKey);
+            });
+        });
+
+        document.querySelectorAll('.remove-col-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeCustomColumn(e.currentTarget.dataset.colKey);
             });
         });
 
         setupColumnNameEditListeners();
 
-        saveToStorage();
-        
         setTimeout(() => {
             updateTotalsOnly();
+            updateSummaryDisplay();
         }, 50);
 
-        // Re-apply search highlight after render
         const searchInput = document.getElementById('searchInput');
         if (searchInput && searchInput.value.trim()) {
-            setTimeout(() => {
-                performSearch(searchInput.value.trim());
-            }, 60);
+            setTimeout(() => performSearch(searchInput.value.trim()), 60);
         }
     }
 
-    // ========================================
-    // HANDLE DELETE ROW
-    // ========================================
-    function handleDeleteRow(e) {
-        if (!userCanEdit()) {
-            showToast('⚠️ Only admin can delete rows', 'error');
-            return;
-        }
-        const dateId = parseInt(e.target.dataset.dateId);
-        const rowId = parseInt(e.target.dataset.rowId);
-        
-        if (confirm('⚠️ Are you sure you want to delete this transaction?\n\nThis data will be permanently deleted from the cloud and cannot be recovered.')) {
-            const group = data.find(d => d.id === dateId);
-            if (group) {
-                const key = dateId + '_' + rowId;
-                if (transactionFees[key]) {
-                    delete transactionFees[key];
-                    console.log('🗑️ Fee removed for deleted row:', key);
-                }
-                recalculateTotalFees();
-                updateTransactionFeesDisplay();
-                
-                group.rows = group.rows.filter(r => r.id !== rowId);
-                render();
-                saveToStorage();
-                scheduleCloudSync();
-                showToast('✅ Transaction deleted successfully', 'success');
-            }
-        }
-    }
-
-    // ========================================
-    // HANDLE DELETE DATE
-    // ========================================
-    function handleDeleteDate(e) {
-        if (!userCanEdit()) {
-            showToast('⚠️ Only admin can delete dates', 'error');
-            return;
-        }
-        const dateId = parseInt(e.target.dataset.dateId);
-        
-        if (confirm('⚠️ Are you sure you want to delete this entire date entry and all its transactions?\n\nThis data will be permanently deleted from the cloud and cannot be recovered.')) {
-            const keysToRemove = [];
-            for (let key in transactionFees) {
-                if (key.startsWith(dateId + '_')) {
-                    keysToRemove.push(key);
-                }
-            }
-            keysToRemove.forEach(key => {
-                delete transactionFees[key];
-                console.log('🗑️ Fee removed for deleted date:', key);
+    function setupColumnNameEditListeners() {
+        document.querySelectorAll('.edit-name-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                editColumnName(this.dataset.colKey);
             });
-            
-            data = data.filter(d => d.id !== dateId);
-            delete savedDates[dateId];
-            delete editModes[dateId];
-            
-            recalculateTotalFees();
-            updateTransactionFeesDisplay();
-            
-            render();
-            saveToStorage();
-            scheduleCloudSync();
-            showToast('✅ Date entry deleted successfully', 'success');
-        }
+        });
     }
 
     // ========================================
-    // ADD DATE ENTRY
+    // FILTERS
     // ========================================
-    function addDateEntry() {
-        if (!userCanEdit()) {
-            showToast('⚠️ Only admin can add dates', 'error');
-            return;
-        }
-        
-        const dateInput = prompt('Enter date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-        if (!dateInput) return;
-
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-            alert('Please use YYYY-MM-DD format');
-            return;
-        }
-
-        const dateExists = data.some(d => d.date === dateInput);
-        if (dateExists) {
-            alert('❌ This date already exists! Please enter a different date.');
-            return;
-        }
-
-        const newGroup = {
-            id: nextDateId++,
-            date: dateInput,
-            rows: []
-        };
-
-        const newRow = createEmptyRow();
-        newGroup.rows.push(newRow);
-
-        data.push(newGroup);
-        data = sortDataByDate(data);
-        render();
-        scheduleCloudSync();
-        showToast('✅ Date added successfully!', 'success');
-    }
-
     function applyDateFilter() {
         dateFrom = dateFromInput.value || '';
-        dateTo = dateToInput.value || '';
+        dateTo   = dateToInput.value || '';
         render();
     }
 
@@ -2135,18 +1957,18 @@
         render();
     }
 
+    // ========================================
+    // PRINT / PDF EXPORT
+    // ========================================
     function exportPdf() {
-        const filtered = getFilteredData();
+        const filtered   = getFilteredData();
         const allColumns = getAllColumns();
+        const summary    = buildSummary();
 
         let filterInfo = '';
-        if (dateFrom && dateTo) {
-            filterInfo = ` (${dateFrom} to ${dateTo})`;
-        } else if (dateFrom) {
-            filterInfo = ` (from ${dateFrom})`;
-        } else if (dateTo) {
-            filterInfo = ` (up to ${dateTo})`;
-        }
+        if (dateFrom && dateTo) filterInfo = ` (${dateFrom} to ${dateTo})`;
+        else if (dateFrom) filterInfo = ` (from ${dateFrom})`;
+        else if (dateTo) filterInfo = ` (up to ${dateTo})`;
 
         let printHtml = `
         <html>
@@ -2158,21 +1980,17 @@
             .subtitle { color: #4a5a7a; margin: 10px 0 20px; text-align: center; font-size: 14px; }
             .filter-info { color: #6b6860; margin-bottom: 20px; font-size: 13px; text-align: center; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
-            th { background: #e8e0d4; padding: 10px 8px; border: 1px solid #b8b0a4; text-align: center; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+            th { background: #e8e0d4; padding: 10px 8px; border: 1px solid #b8b0a4; text-align: center; font-weight: 700; font-size: 10px; text-transform: uppercase; }
             td { padding: 6px 8px; border: 1px solid #c8c0b4; text-align: center; vertical-align: middle; }
             .date-header { background: #f0ece4; font-weight: 700; }
             .date-header td { padding: 10px 16px; text-align: left; font-size: 13px; }
             .desc-row td { background: #f8f6f0; }
-            .desc-row td:first-child { background: #f8f6f0; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
-            .desc-row .desc-text { font-size: 0.85rem; color: #1a1a1d; text-align: left; }
+            .desc-row td:first-child { font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .trans-row td { background: #f5f3ec; }
-            .trans-row td:first-child { background: #f5f3ec; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
-            .trans-row .trans-text { font-size: 0.85rem; color: #1a1a1d; text-align: left; }
+            .trans-row td:first-child { font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .amount-row td { background: #efece4; }
-            .amount-row td:first-child { background: #efece4; font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
-            .amount-row .amount-text { font-weight: 700; color: #0a2a44; font-size: 0.9rem; text-align: right; }
+            .amount-row td:first-child { font-weight: 700; font-size: 10px; color: #0a2a44; text-align: right; padding-right: 15px; }
             .col-total { background: #e8e0d4; font-weight: 700; }
-            .col-total td { padding: 10px 8px; }
             .grand-total { background: #0a2a44; color: #ffffff; font-weight: 800; }
             .grand-total td { padding: 12px 8px; font-size: 14px; }
             .separator td { border-bottom: 2px dashed #c8c0b4; }
@@ -2182,93 +2000,75 @@
         <body>
         <h1>📡 STARLINK · GENERAL CONNECTION EXPENDITURE</h1>
         <div class="subtitle">Expenditure Report</div>
-        <div class="filter-info"><strong>Date Range:</strong> ${filterInfo || 'All records'}</div>
+        <div class="filter-info"><strong>Date Range:</strong> ${escapeHtml(filterInfo || 'All records')}</div>
         `;
 
         if (filtered.length === 0) {
-            printHtml += `<div style="text-align:center; padding:40px; color:#6b6860; font-size:16px;">📭 No expenditure records found for the selected date range.</div>`;
+            printHtml += `<div style="text-align:center; padding:40px; color:#6b6860;">📭 No expenditure records found.</div>`;
         } else {
             printHtml += `<table>`;
             printHtml += `<tr><th>DATE</th>`;
-            allColumns.forEach(col => {
-                const colLabel = getColumnLabel(col);
-                printHtml += `<th>${colLabel}</th>`;
-            });
+            allColumns.forEach(col => printHtml += `<th>${escapeHtml(getColumnLabel(col))}</th>`);
             printHtml += `<th>TOTAL</th></tr>`;
 
             filtered.forEach(group => {
-                printHtml += `<tr class="date-header"><td colspan="${allColumns.length + 2}">📅 ${group.date}</td></tr>`;
+                printHtml += `<tr class="date-header"><td colspan="${allColumns.length + 2}">📅 ${escapeHtml(group.date)}</td></tr>`;
 
                 if (group.rows.length === 0) {
-                    printHtml += `<tr><td colspan="${allColumns.length + 2}" style="text-align:center; color:#6b6860;">No transactions</td></tr>`;
+                    printHtml += `<tr><td colspan="${allColumns.length + 2}" style="text-align:center;">No transactions</td></tr>`;
                 } else {
                     group.rows.forEach((row, index) => {
-                        if (index > 0) {
-                            printHtml += `<tr class="separator"><td colspan="${allColumns.length + 2}"></td></tr>`;
-                        }
+                        if (index > 0) printHtml += `<tr class="separator"><td colspan="${allColumns.length + 2}"></td></tr>`;
 
-                        printHtml += `<tr class="desc-row">`;
-                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">DESCRIPTION</td>`;
-                        allColumns.forEach(col => {
-                            const descVal = row[col.key + '_desc'] || '';
-                            printHtml += `<td class="desc-text" style="text-align:left; font-size:0.85rem;">${descVal || '-'}</td>`;
-                        });
-                        printHtml += `<td style="font-weight:700; color:#0a2a44;">${getRowTotal(row).toFixed(2)}</td>`;
-                        printHtml += `</tr>`;
+                        printHtml += `<tr class="desc-row"><td>DESCRIPTION</td>`;
+                        allColumns.forEach(col => printHtml += `<td style="text-align:left;">${escapeHtml(row[col.key + '_desc'] || '-')}</td>`);
+                        printHtml += `<td style="font-weight:700;">${getRowTotal(row).toFixed(2)}</td></tr>`;
 
-                        printHtml += `<tr class="trans-row">`;
-                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">TRANSACTION REFERENCE</td>`;
-                        allColumns.forEach(col => {
-                            const transVal = row[col.key + '_transaction'] || '';
-                            printHtml += `<td class="trans-text" style="text-align:left; font-size:0.85rem;">${transVal || '-'}</td>`;
-                        });
-                        printHtml += `<td></td>`;
-                        printHtml += `</tr>`;
+                        printHtml += `<tr class="trans-row"><td>TRANSACTION</td>`;
+                        allColumns.forEach(col => printHtml += `<td style="text-align:left;">${escapeHtml(row[col.key + '_transaction'] || '-')}</td>`);
+                        printHtml += `<td></td></tr>`;
 
-                        printHtml += `<tr class="amount-row">`;
-                        printHtml += `<td style="font-weight:700; font-size:10px; color:#0a2a44; text-align:right; padding-right:15px;">AMOUNT</td>`;
-                        allColumns.forEach(col => {
-                            const amountVal = row[col.key + '_amount'] || 0;
-                            printHtml += `<td class="amount-text" style="text-align:right; font-weight:700; color:#0a2a44;">${formatNumber(amountVal).toFixed(2)}</td>`;
-                        });
-                        printHtml += `<td style="font-weight:700; color:#0a2a44;">${getRowTotal(row).toFixed(2)}</td>`;
-                        printHtml += `</tr>`;
+                        printHtml += `<tr class="amount-row"><td>AMOUNT</td>`;
+                        allColumns.forEach(col => printHtml += `<td style="text-align:right; font-weight:700;">${formatNumber(row[col.key + '_amount']).toFixed(2)}</td>`);
+                        printHtml += `<td style="font-weight:700;">${getRowTotal(row).toFixed(2)}</td></tr>`;
                     });
                 }
 
                 const dateTotal = getDateGroupTotal(group);
-                printHtml += `<tr style="background:#f0ece4; font-weight:700;">`;
-                printHtml += `<td colspan="${allColumns.length + 1}" style="text-align:right; padding-right:20px;">Date Total Amount:</td>`;
-                printHtml += `<td style="font-weight:700; color:#0a2a44;">${dateTotal.toFixed(2)}</td>`;
-                printHtml += `</tr>`;
+                printHtml += `<tr style="background:#f0ece4; font-weight:700;">
+                    <td colspan="${allColumns.length + 1}" style="text-align:right; padding-right:20px;">Date Total:</td>
+                    <td>${dateTotal.toFixed(2)}</td>
+                </tr>`;
             });
 
             const colTotals = computeColumnTotals(filtered);
-            printHtml += `<tr class="col-total">`;
-            printHtml += `<td style="font-weight:700;">COLUMN TOTALS</td>`;
+            printHtml += `<tr class="col-total"><td>COLUMN TOTALS</td>`;
             allColumns.forEach(col => {
                 if (isNumericColumn(col.key)) {
-                    printHtml += `<td style="font-weight:700;">${(colTotals[col.key] || 0).toFixed(2)}</td>`;
+                    printHtml += `<td>${(colTotals[col.key] || 0).toFixed(2)}</td>`;
                 } else {
                     printHtml += `<td>0.00</td>`;
                 }
             });
             const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
-            printHtml += `<td style="font-weight:700; color:#0a2a44;">${totalColSum.toFixed(2)}</td>`;
-            printHtml += `</tr>`;
+            printHtml += `<td style="font-weight:700;">${totalColSum.toFixed(2)}</td></tr>`;
 
             const grandTotal = computeGrandTotal(filtered);
-            printHtml += `<tr class="grand-total">`;
-            printHtml += `<td colspan="${allColumns.length + 1}" style="text-align:right; padding-right:20px;">GRAND TOTAL</td>`;
-            printHtml += `<td>${grandTotal.toFixed(2)}</td>`;
-            printHtml += `</tr>`;
+            printHtml += `<tr class="grand-total"><td colspan="${allColumns.length + 1}" style="text-align:right; padding-right:20px;">GRAND TOTAL</td><td>${grandTotal.toFixed(2)}</td></tr>`;
             printHtml += `</table>`;
         }
 
         printHtml += `
         <div style="margin-top: 30px; border-top: 2px solid #c89a5b; padding-top: 20px;">
-            <h2 style="color: #0a2a44; font-size: 18px;">💳 TRANSACTION FEES</h2>
-            <p style="font-size: 14px; font-weight: 700; color: #0a2a44;">Total Transaction Fees: KSh ${totalTransactionFees.toFixed(2)}</p>
+            <h2 style="color: #0a2a44; font-size: 18px;">📊 INVESTMENT SUMMARY</h2>
+            <table style="width: 100%; font-size: 13px;">
+                <tr><td style="text-align:left;">STARLINK VIRTUAL INVESTMENT</td><td style="text-align:right; font-weight:700;">KSh ${summary.starlinkVirtualInvestment.toFixed(2)}</td></tr>
+                <tr><td style="text-align:left;">STARLINK INVESTMENT TOTAL</td><td style="text-align:right; font-weight:700;">KSh ${summary.starlinkInvestmentTotal.toFixed(2)}</td></tr>
+                <tr><td style="text-align:left;">COMMON EXPENDITURE TOTAL</td><td style="text-align:right; font-weight:700;">KSh ${summary.commonExpenditureTotal.toFixed(2)}</td></tr>
+                <tr><td style="text-align:left;">ROUTERS TOTAL</td><td style="text-align:right; font-weight:700;">KSh ${summary.routersTotal.toFixed(2)}</td></tr>
+                <tr><td style="text-align:left;">KAIRO ROUTERS TOTAL</td><td style="text-align:right; font-weight:700;">KSh ${summary.kairoRoutersTotal.toFixed(2)}</td></tr>
+                <tr><td style="text-align:left;">TRANSACTION FEES</td><td style="text-align:right; font-weight:700;">KSh ${summary.totalTransactionFees.toFixed(2)}</td></tr>
+            </table>
         </div>
         `;
 
@@ -2287,33 +2087,21 @@
     }
 
     // ========================================
-    // SAVE TO STORAGE
+    // STORAGE
     // ========================================
     function saveToStorage() {
         try {
             data = sortDataByDate(data);
             const store = {
-                data,
-                nextDateId,
-                nextRowId,
-                nextColId,
-                customColumns,
-                savedCustomColumns,
-                savedDates,
-                editModes,
-                dateFrom,
-                dateTo,
-                columnNameEdits,
-                transactionFees,
-                totalTransactionFees
+                data, nextDateId, nextRowId, nextColId,
+                customColumns, savedCustomColumns, savedDates, editModes,
+                dateFrom, dateTo,
+                columnNameEdits, transactionFees, totalTransactionFees
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
         } catch (e) {}
     }
 
-    // ========================================
-    // LOAD FROM STORAGE
-    // ========================================
     function loadFromStorage() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -2322,14 +2110,15 @@
             if (store.data && Array.isArray(store.data)) {
                 data = sortDataByDate(store.data);
                 nextDateId = store.nextDateId || 1;
-                nextRowId = store.nextRowId || 1;
-                nextColId = store.nextColId || 1;
-                customColumns = store.customColumns || [];
+                nextRowId  = store.nextRowId  || 1;
+                nextColId  = store.nextColId  || 1;
+                customColumns      = store.customColumns      || [];
                 savedCustomColumns = store.savedCustomColumns || [];
                 savedDates = store.savedDates || {};
-                editModes = store.editModes || {};
-                dateFrom = store.dateFrom || '';
-                dateTo = store.dateTo || '';
+                editModes  = store.editModes  || {};
+                dateFrom   = store.dateFrom || '';
+                dateTo     = store.dateTo   || '';
+
                 if (store.columnNameEdits) {
                     columnNameEdits = store.columnNameEdits;
                     saveColumnNameEdits();
@@ -2338,8 +2127,8 @@
                     transactionFees = store.transactionFees || {};
                     totalTransactionFees = store.totalTransactionFees || 0;
                 }
-                if (dateFrom) dateFromInput.value = dateFrom;
-                if (dateTo) dateToInput.value = dateTo;
+                if (dateFrom && dateFromInput) dateFromInput.value = dateFrom;
+                if (dateTo && dateToInput)     dateToInput.value   = dateTo;
                 return true;
             }
         } catch (e) {}
@@ -2347,56 +2136,23 @@
     }
 
     // ========================================
-    // CREATE TRANSACTION FEES DISPLAY
+    // MAIN APP INIT (guarded)
     // ========================================
-    function createTransactionFeesDisplay() {
-        let feesEl = document.getElementById('transactionFeesDisplay');
-        if (feesEl) {
+    let mainAppInitialized = false;
+
+    function initMainApp() {
+        if (mainAppInitialized) {
+            render();
+            updateSummaryDisplay();
             updateTransactionFeesDisplay();
             return;
         }
+        mainAppInitialized = true;
 
-        const totalsGrid = document.querySelector('.totals-grid');
-        if (!totalsGrid) return;
-
-        const feesCard = document.createElement('div');
-        feesCard.className = 'total-card';
-        feesCard.id = 'transactionFeesDisplay';
-        feesCard.style.cssText = `
-            background: linear-gradient(135deg, rgba(200, 154, 91, 0.12) 0%, rgba(226, 104, 91, 0.08) 100%);
-            border: 1px solid rgba(200, 154, 91, 0.15);
-            padding: 8px 18px 8px 16px;
-            border-radius: 60px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 2px 10px var(--shadow-light);
-        `;
-        
-        feesCard.innerHTML = `
-            <span style="font-weight: 600; color: var(--text-muted); font-size: 0.7rem;">💳 TRANSACTION FEES</span>
-            <span style="font-weight: 800; font-size: 1.2rem; color: var(--accent-brass);" id="transactionFeesTotal">${totalTransactionFees.toFixed(2)}</span>
-        `;
-
-        const grandTotalCard = document.getElementById('grandTotalCard');
-        if (grandTotalCard) {
-            grandTotalCard.after(feesCard);
-        } else {
-            totalsGrid.appendChild(feesCard);
-        }
-
-        updateTransactionFeesDisplay();
-    }
-
-    // ========================================
-    // INIT MAIN APP
-    // ========================================
-    function initMainApp() {
         initSupabase();
 
-        const savedTheme = getStoredTheme();
-        applyTheme(savedTheme);
-        themeToggle.addEventListener('click', toggleTheme);
+        applyTheme(getStoredTheme());
+        if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
 
         const loaded = loadFromStorage();
 
@@ -2409,20 +2165,19 @@
             dateTo = '';
             transactionFees = {};
             totalTransactionFees = 0;
-            const sampleGroup = {
+            data = [{
                 id: nextDateId++,
                 date: new Date().toISOString().split('T')[0],
                 rows: [createEmptyRow()]
-            };
-            data = [sampleGroup];
+            }];
         }
 
         rebuildFeesFromData();
-
         data = sortDataByDate(data);
         render();
 
         createTransactionFeesDisplay();
+        createSummaryDisplay();
         setupSearchFunctionality();
 
         if (SYNC_ENABLED) {
@@ -2430,33 +2185,26 @@
                 syncFromCloud(true).then(() => {
                     setTimeout(() => {
                         updateTotalsOnly();
-                        console.log('✅ Totals refreshed after cloud sync');
-                        console.log('💳 Total Transaction Fees:', totalTransactionFees);
+                        updateSummaryDisplay();
                     }, 200);
                 });
             }, 1000);
         }
 
-        if (modalCloseBtn) {
-            modalCloseBtn.addEventListener('click', closeReadMoreModal);
-        }
+        if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeReadMoreModal);
         if (modal) {
             modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    closeReadMoreModal();
-                }
+                if (e.target === modal) closeReadMoreModal();
             });
             document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closeReadMoreModal();
-                }
+                if (e.key === 'Escape') closeReadMoreModal();
             });
         }
 
-        applyFilterBtn.addEventListener('click', applyDateFilter);
-        clearFilterBtn.addEventListener('click', clearDateFilter);
-        printBtn.addEventListener('click', exportPdf);
-        addDateBtn.addEventListener('click', addDateEntry);
+        if (applyFilterBtn) applyFilterBtn.addEventListener('click', applyDateFilter);
+        if (clearFilterBtn) clearFilterBtn.addEventListener('click', clearDateFilter);
+        if (printBtn)       printBtn.addEventListener('click', exportPdf);
+        if (addDateBtn)     addDateBtn.addEventListener('click', addDateEntry);
 
         if (syncNowBtn) {
             syncNowBtn.addEventListener('click', function() {
@@ -2464,130 +2212,56 @@
             });
         }
 
-        addRowBtn.addEventListener('click', () => {
-            if (data.length === 0) {
-                alert('Please add a date entry first (click "Add New Date Entry")');
-                return;
-            }
-            const lastGroup = data[data.length - 1];
-            addTransactionRow(lastGroup.id);
+        if (addRowBtn) {
+            addRowBtn.addEventListener('click', () => {
+                if (data.length === 0) {
+                    alert('Please add a date entry first');
+                    return;
+                }
+                addTransactionRow(data[data.length - 1].id);
+            });
+        }
+
+        window.addEventListener('beforeunload', function() {
+            clearTimeout(saveTimeout);
+            clearTimeout(cloudSyncTimer);
+            saveToStorage();
         });
     }
 
     // ========================================
-    // INIT
+    // BOOTSTRAP
     // ========================================
-    function init() {
-        console.log('🚀 Initializing app...');
-        
-        // Check for existing session FIRST
-        const savedUser = sessionStorage.getItem('starlink_user');
-        if (savedUser) {
-            try {
-                const user = JSON.parse(savedUser);
-                const users = getUsers();
-                const exists = users.find(u => u.id === user.id);
-                if (exists) {
-                    console.log('✅ Session found for user:', user.username);
-                    currentUser = user;
-                    // Show main app immediately
-                    showMainApp();
-                    return;
-                } else {
-                    sessionStorage.removeItem('starlink_user');
-                    currentUser = null;
-                }
-            } catch (e) {
-                console.warn('⚠️ Invalid session data:', e);
-                sessionStorage.removeItem('starlink_user');
-                currentUser = null;
-            }
-        }
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('📄 DOM loaded, initializing...');
-                initializeApp();
-            });
-        } else {
-            console.log('📄 DOM already loaded, initializing...');
-            initializeApp();
-        }
-    }
-
     function initializeApp() {
         try {
-            const requiredElements = [
-                'loginScreen', 'forgotScreen', 'changePasswordScreen', 'mainApp',
-                'usernameInput', 'passwordInput', 'loginBtn', 'forgotPasswordBtn',
-                'backToLoginBtn', 'changePasswordBtn', 'changePasswordBackBtn',
-                'changePasswordSaveBtn', 'logoutBtn', 'adminPanelBtn'
-            ];
-            
-            let allElementsExist = true;
-            requiredElements.forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) {
-                    console.warn(`⚠️ Element #${id} not found`);
-                    allElementsExist = false;
-                }
-            });
-            
-            if (!allElementsExist) {
-                console.error('❌ Required elements missing! Check your HTML IDs.');
-                return;
-            }
-            
-            // Check if user is already logged in
-            const savedUser = sessionStorage.getItem('starlink_user');
+            const savedUser = sessionStorage.getItem(KEY_USER_SESSION);
             let loggedIn = false;
-            
+
             if (savedUser) {
                 try {
                     currentUser = JSON.parse(savedUser);
                     const users = getUsers();
                     const exists = users.find(u => u.id === currentUser.id);
                     if (exists) {
-                        console.log('✅ User logged in from session:', currentUser.username);
                         showMainApp();
                         loggedIn = true;
-                    } else {
-                        sessionStorage.removeItem('starlink_user');
-                        currentUser = null;
                     }
-                } catch (e) {
-                    console.warn('⚠️ Invalid session data:', e);
-                    sessionStorage.removeItem('starlink_user');
-                    currentUser = null;
-                }
+                } catch (e) {}
             }
-            
+
             if (!loggedIn) {
-                console.log('🔐 No user logged in, showing login screen');
-                const loginScreenEl = document.getElementById('loginScreen');
-                const mainAppEl = document.getElementById('mainApp');
-                const forgotScreenEl = document.getElementById('forgotScreen');
-                const changePasswordScreenEl = document.getElementById('changePasswordScreen');
-                
-                if (loginScreenEl) loginScreenEl.style.display = 'flex';
-                if (mainAppEl) mainAppEl.style.display = 'none';
-                if (forgotScreenEl) forgotScreenEl.style.display = 'none';
-                if (changePasswordScreenEl) changePasswordScreenEl.style.display = 'none';
-                
+                loginScreen.style.display = 'flex';
+                mainApp.style.display = 'none';
                 if (usernameInput) usernameInput.focus();
             }
-            
-            // ========================================
-            // EVENT LISTENERS
-            // ========================================
-            
+
             if (loginBtn) {
                 loginBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     attemptLogin();
                 });
             }
-            
+
             if (usernameInput) {
                 usernameInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2596,7 +2270,7 @@
                     }
                 });
             }
-            
+
             if (passwordInput) {
                 passwordInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2605,29 +2279,13 @@
                     }
                 });
             }
-            
-            if (forgotPasswordBtn) {
-                forgotPasswordBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    showForgotScreen();
-                });
-            }
-            
-            if (backToLoginBtn) {
-                backToLoginBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    showLoginScreen();
-                });
-            }
-            
+
+            if (forgotPasswordBtn) forgotPasswordBtn.addEventListener('click', (e) => { e.preventDefault(); showForgotScreen(); });
+            if (backToLoginBtn)    backToLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showLoginScreen(); });
+
             const forgotSubmitBtn = document.getElementById('forgotSubmitBtn');
-            if (forgotSubmitBtn) {
-                forgotSubmitBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    handleForgotPassword();
-                });
-            }
-            
+            if (forgotSubmitBtn) forgotSubmitBtn.addEventListener('click', (e) => { e.preventDefault(); handleForgotPassword(); });
+
             const forgotUsername = document.getElementById('forgotUsername');
             if (forgotUsername) {
                 forgotUsername.addEventListener('keydown', function(e) {
@@ -2637,29 +2295,11 @@
                     }
                 });
             }
-            
-            if (changePasswordBtn) {
-                changePasswordBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    showChangePasswordScreen();
-                });
-            }
-            
-            if (changePasswordBackBtn) {
-                changePasswordBackBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    showLoginScreen();
-                });
-            }
-            
-            if (changePasswordSaveBtn) {
-                changePasswordSaveBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('🔑 Change Password button clicked from event listener');
-                    handleChangePassword();
-                });
-            }
-            
+
+            if (changePasswordBtn)     changePasswordBtn.addEventListener('click', (e) => { e.preventDefault(); showChangePasswordScreen(); });
+            if (changePasswordBackBtn) changePasswordBackBtn.addEventListener('click', (e) => { e.preventDefault(); showLoginScreen(); });
+            if (changePasswordSaveBtn) changePasswordSaveBtn.addEventListener('click', (e) => { e.preventDefault(); handleChangePassword(); });
+
             if (changePasswordOld) {
                 changePasswordOld.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2668,7 +2308,6 @@
                     }
                 });
             }
-            
             if (changePasswordNew) {
                 changePasswordNew.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2677,7 +2316,6 @@
                     }
                 });
             }
-            
             if (changePasswordConfirm) {
                 changePasswordConfirm.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2686,63 +2324,16 @@
                     }
                 });
             }
-            
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    logout();
-                });
-            }
-            
-            if (adminPanelBtn) {
-                adminPanelBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    openAdminPanel();
-                });
-            }
-            
-            if (adminPanelClose) {
-                adminPanelClose.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    closeAdminPanel();
-                });
-            }
-            
-            if (adminPanelCloseBtn) {
-                adminPanelCloseBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    closeAdminPanel();
-                });
-            }
-            
-            if (addUserBtn) {
-                addUserBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    openUserModal(null);
-                });
-            }
-            
-            if (userModalSave) {
-                userModalSave.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    saveUser();
-                });
-            }
-            
-            if (userModalCancel) {
-                userModalCancel.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    closeUserModal();
-                });
-            }
-            
-            if (userModalClose) {
-                userModalClose.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    closeUserModal();
-                });
-            }
-            
+
+            if (logoutBtn)          logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
+            if (adminPanelBtn)      adminPanelBtn.addEventListener('click', (e) => { e.preventDefault(); openAdminPanel(); });
+            if (adminPanelClose)    adminPanelClose.addEventListener('click', (e) => { e.preventDefault(); closeAdminPanel(); });
+            if (adminPanelCloseBtn) adminPanelCloseBtn.addEventListener('click', (e) => { e.preventDefault(); closeAdminPanel(); });
+            if (addUserBtn)         addUserBtn.addEventListener('click', (e) => { e.preventDefault(); openUserModal(null); });
+            if (userModalSave)      userModalSave.addEventListener('click', (e) => { e.preventDefault(); saveUser(); });
+            if (userModalCancel)    userModalCancel.addEventListener('click', (e) => { e.preventDefault(); closeUserModal(); });
+            if (userModalClose)     userModalClose.addEventListener('click', (e) => { e.preventDefault(); closeUserModal(); });
+
             if (userModalUsername) {
                 userModalUsername.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2751,7 +2342,6 @@
                     }
                 });
             }
-            
             if (userModalPassword) {
                 userModalPassword.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -2760,40 +2350,47 @@
                     }
                 });
             }
-            
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
+
+            document.querySelectorAll('.modal').forEach(m => {
+                m.addEventListener('click', function(e) {
                     if (e.target === this) {
-                        if (this.id === 'userModal') {
-                            closeUserModal();
-                        } else if (this.id === 'adminPanel') {
-                            closeAdminPanel();
-                        }
+                        if (this.id === 'userModal') closeUserModal();
+                        else if (this.id === 'adminPanel') closeAdminPanel();
                     }
                 });
             });
-            
-            console.log('✅ App initialized successfully');
-            
+
         } catch (error) {
-            console.error('❌ Error initializing app:', error);
-            const loginErrorEl = document.getElementById('loginError');
-            if (loginErrorEl) {
-                loginErrorEl.textContent = '⚠️ App initialization error. Please refresh.';
-                loginErrorEl.style.display = 'block';
-            }
+            console.error('❌ Init error:', error);
         }
     }
 
-    // ========================================
-    // START APP
-    // ========================================
+    function init() {
+        const savedUser = sessionStorage.getItem(KEY_USER_SESSION);
+        if (savedUser) {
+            try {
+                const user = JSON.parse(savedUser);
+                const users = getUsers();
+                const exists = users.find(u => u.id === user.id);
+                if (exists) {
+                    currentUser = user;
+                    showMainApp();
+                    return;
+                }
+            } catch (e) {}
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+    }
+
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         setTimeout(init, 100);
     } else {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(init, 100);
-        });
+        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
     }
 
 })();
