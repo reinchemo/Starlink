@@ -1,12 +1,10 @@
 // script.js – Login, Auto-calculating Totals, Supabase Cloud Sync, Realtime, Summary Export
-// 6 default columns + 3 expected saved custom columns (DARKWEBS EXPENDITURE,
-// STARLINK INVESTMENT, KAIRO ROUTERS). All columns count toward the grand total.
+// 6 default columns + 3 expected saved custom columns.
+// All columns count toward the grand total.
 //
-// FIXES:
-//  - syncToCloud() refuses to write an empty/zero summary when data has real rows
-//  - buildSummary() sanity-warns if it computes zeros despite rows having amounts
-//  - safe numeric coercion everywhere (handles "", null, undefined)
-//  - Storage key bumped to v32
+// PHASE 2 — Cinematic UI (cursor glow, particles, magnetic buttons, ripple, confetti)
+// PER-DATE FEES — Every date footer displays its own total transaction fees.
+// GLOBAL DUPLICATE PROTECTION — Same transaction code cannot exist on two dates.
 
 (function() {
         "use strict";
@@ -81,19 +79,22 @@
             toast.textContent = message;
             toast.style.cssText = `
             position: fixed;
-            bottom: 20px;
+            bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            z-index: 9999;
-            background: ${type === 'success' ? 'rgba(111, 203, 147, 0.15)' : type === 'error' ? 'rgba(226, 104, 91, 0.15)' : 'rgba(79, 182, 168, 0.15)'};
-            color: ${type === 'success' ? 'var(--accent-green)' : type === 'error' ? 'var(--accent-red)' : 'var(--accent-teal)'};
-            border: 1px solid ${type === 'success' ? 'rgba(111, 203, 147, 0.2)' : type === 'error' ? 'rgba(226, 104, 91, 0.2)' : 'rgba(79, 182, 168, 0.2)'};
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px var(--shadow);
+            padding: 14px 28px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 0.86rem;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 0.02em;
+            z-index: 99999;
+            background: ${type === 'success' ? 'rgba(52, 211, 153, 0.18)' : type === 'error' ? 'rgba(248, 113, 113, 0.18)' : 'rgba(56, 189, 248, 0.18)'};
+            color: ${type === 'success' ? '#34d399' : type === 'error' ? '#f87171' : '#38bdf8'};
+            border: 1px solid ${type === 'success' ? 'rgba(52, 211, 153, 0.35)' : type === 'error' ? 'rgba(248, 113, 113, 0.35)' : 'rgba(56, 189, 248, 0.35)'};
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px ${type === 'success' ? 'rgba(52, 211, 153, 0.2)' : type === 'error' ? 'rgba(248, 113, 113, 0.2)' : 'rgba(56, 189, 248, 0.2)'};
             max-width: 90%;
             text-align: center;
         `;
@@ -101,15 +102,14 @@
 
             setTimeout(() => {
                 toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
+                toast.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                toast.style.transform = 'translateX(-50%) translateY(12px) scale(0.95)';
+                setTimeout(() => toast.remove(), 350);
             }, 3000);
         }
 
         // ========================================
         // BUILD SUMMARY
-        // Resolves columns by key OR label to handle
-        // default, saved, and temp custom columns.
         // ========================================
         function buildSummary() {
             const allCols = getAllColumns();
@@ -168,7 +168,6 @@
                 lastUpdated: new Date().toISOString()
             };
 
-            // Sanity check — if summary is all zero, warn loudly
             if (summary.commonExpenditureTotal === 0 &&
                 summary.routersTotal === 0 &&
                 summary.starlinkVirtualInvestment === 0 &&
@@ -182,12 +181,7 @@
                 }));
 
                 if (hasAnyAmounts) {
-                    console.warn('⚠️ buildSummary: summary is 0 but raw data has amounts!', {
-                        commonExpenditureKey,
-                        routersKey,
-                        kairoRoutersKey,
-                        starlinkInvestmentKey
-                    });
+                    console.warn('⚠️ buildSummary: summary is 0 but raw data has amounts!');
                 }
             }
 
@@ -204,7 +198,6 @@
                 return;
             }
 
-            // GUARD: Don't sync if data is empty or if there's nothing meaningful
             if (!data || data.length === 0) {
                 console.warn('⚠️ syncToCloud skipped — no data loaded yet');
                 if (showToastMsg) showToast('⚠️ Nothing to sync yet', 'info');
@@ -308,6 +301,7 @@
                         updateTotalsOnly();
                         updateTransactionFeesDisplay();
                         updateSummaryDisplay();
+                        updateDateFeesDisplays();
                     }, 100);
 
                     if (showToastMsg) showToast('✅ Data loaded from cloud', 'success');
@@ -349,16 +343,22 @@
 
             recalculateTotalFees();
             updateTransactionFeesDisplay();
+            updateDateFeesDisplays();
             return totalTransactionFees;
         }
 
+        // ========================================
+        // DUPLICATE DETECTION — GLOBAL (across ALL dates)
+        // Returns: { code, conflictDate, scope } or null
+        // ========================================
         function checkForDuplicateTransactions(dateId) {
             const group = data.find(d => d.id === dateId);
             if (!group) return null;
 
             const allCols = getAllColumns();
-            const codes = [];
+            const targetCodes = [];
 
+            // Step 1 — collect all codes in the date being saved
             group.rows.forEach(row => {
                 allCols.forEach(col => {
                     const transKey = col.key + '_transaction';
@@ -366,18 +366,111 @@
                     if (transVal && transVal.trim() !== '') {
                         const parsed = parseMpesaMessage(transVal);
                         if (parsed && parsed.transactionCode) {
-                            codes.push({ rowId: row.id, code: parsed.transactionCode });
+                            targetCodes.push({
+                                code: parsed.transactionCode.toUpperCase(),
+                                rowId: row.id,
+                                scope: null,
+                                conflictDate: null
+                            });
                         }
                     }
                 });
             });
 
-            const map = {};
-            for (let item of codes) {
-                if (map[item.code]) return item.code;
-                map[item.code] = item.rowId;
+            if (targetCodes.length === 0) return null;
+
+            // Step 2 — check duplicates WITHIN the same date
+            const seen = {};
+            for (const item of targetCodes) {
+                if (seen[item.code]) {
+                    return {
+                        code: item.code,
+                        conflictDate: group.date,
+                        scope: 'same-date'
+                    };
+                }
+                seen[item.code] = item.rowId;
+            }
+
+            // Step 3 — check duplicates ACROSS all other dates
+            for (const otherGroup of data) {
+                if (otherGroup.id === dateId) continue;
+
+                for (const row of otherGroup.rows) {
+                    for (const col of allCols) {
+                        const transKey = col.key + '_transaction';
+                        const transVal = row[transKey];
+                        if (!transVal || transVal.trim() === '') continue;
+
+                        const parsed = parseMpesaMessage(transVal);
+                        if (!parsed || !parsed.transactionCode) continue;
+
+                        const otherCode = parsed.transactionCode.toUpperCase();
+                        const match = targetCodes.find(t => t.code === otherCode);
+                        if (match) {
+                            return {
+                                code: otherCode,
+                                conflictDate: otherGroup.date,
+                                scope: 'cross-date'
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // ========================================
+        // LIVE CHECK — is this code used on ANY other date?
+        // Returns the conflicting date string or null
+        // ========================================
+        function isCodeUsedElsewhere(code, currentDateId) {
+            if (!code || code.trim() === '') return null;
+            const q = code.toUpperCase().trim();
+            const allCols = getAllColumns();
+
+            for (const group of data) {
+                if (group.id === currentDateId) continue;
+                for (const row of group.rows) {
+                    for (const col of allCols) {
+                        const transKey = col.key + '_transaction';
+                        const transVal = row[transKey];
+                        if (!transVal || transVal.trim() === '') continue;
+
+                        const parsed = parseMpesaMessage(transVal);
+                        if (parsed && parsed.transactionCode &&
+                            parsed.transactionCode.toUpperCase() === q) {
+                            return group.date;
+                        }
+                    }
+                }
             }
             return null;
+        }
+
+        // ========================================
+        // HIGHLIGHT DUPLICATE — visual rejection
+        // ========================================
+        function highlightDuplicateRows(code) {
+            if (!code) return;
+            const q = code.toUpperCase();
+
+            document.querySelectorAll('tr.duplicate-warning').forEach(el => el.classList.remove('duplicate-warning'));
+            document.querySelectorAll('td.duplicate-cell').forEach(el => el.classList.remove('duplicate-cell'));
+
+            document.querySelectorAll('.trans-input, .desc-display[data-type="transaction"]').forEach(el => {
+                const text = (el.value || el.textContent || el.dataset.fullText || '').toUpperCase();
+                if (text.includes(q)) {
+                    const row = el.closest('tr');
+                    if (row) row.classList.add('duplicate-warning');
+                    const cell = el.closest('td');
+                    if (cell) cell.classList.add('duplicate-cell');
+                }
+            });
+
+            const firstRow = document.querySelector('tr.duplicate-warning');
+            if (firstRow) firstRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function sortDataByDate(dataArray) {
@@ -935,6 +1028,51 @@
     }
 
     // ========================================
+    // PER-DATE TRANSACTION FEES
+    // ========================================
+    function getDateFeesTotal(group) {
+        if (!group || !group.rows) return 0;
+        let total = 0;
+        const allCols = getAllColumns();
+
+        group.rows.forEach(row => {
+            let rowFee = null;
+
+            const storedKey = group.id + '_' + row.id;
+            if (transactionFees[storedKey] !== undefined && transactionFees[storedKey] > 0) {
+                rowFee = transactionFees[storedKey];
+            } else {
+                allCols.forEach(col => {
+                    const transKey = col.key + '_transaction';
+                    const transVal = row[transKey];
+                    if (transVal && transVal.trim() !== '') {
+                        const parsed = parseMpesaMessage(transVal);
+                        if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
+                            rowFee = parsed.transactionCost;
+                        }
+                    }
+                });
+            }
+
+            if (rowFee !== null && rowFee > 0) {
+                total += rowFee;
+            }
+        });
+
+        return Math.round(total * 100) / 100;
+    }
+
+    function updateDateFeesDisplays() {
+        const filtered = getFilteredData();
+        filtered.forEach(group => {
+            const el = document.querySelector(`[data-date-fees-id="${group.id}"]`);
+            if (!el) return;
+            const total = getDateFeesTotal(group);
+            el.textContent = total.toFixed(2);
+        });
+    }
+
+    // ========================================
     // SUMMARY CARDS
     // ========================================
     function updateSummaryDisplay() {
@@ -955,22 +1093,22 @@
 
         const row = document.createElement('div');
         row.id = 'summaryDisplayRow';
-        row.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; margin-top:12px;';
+        row.style.cssText = 'display:flex; flex-wrap:wrap; gap:14px; margin-top:14px;';
 
         row.innerHTML = `
             <div class="total-card" id="starlinkVirtualCard" style="
-                background: linear-gradient(135deg, rgba(200, 154, 91, 0.15) 0%, rgba(200, 154, 91, 0.05) 100%);
-                border: 1px solid rgba(200, 154, 91, 0.25);
+                background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(245, 158, 11, 0.08));
+                border: 1px solid rgba(251, 191, 36, 0.3);
             ">
                 <span class="total-label">🏛️ STARLINK VIRTUAL</span>
-                <span class="total-value" id="starlinkVirtualTotal" style="color: var(--accent-brass);">0.00</span>
+                <span class="total-value" id="starlinkVirtualTotal" style="color: var(--accent-gold);">0.00</span>
             </div>
             <div class="total-card" id="starlinkInvestmentCard" style="
-                background: linear-gradient(135deg, rgba(79, 182, 168, 0.12) 0%, rgba(79, 182, 168, 0.05) 100%);
-                border: 1px solid rgba(79, 182, 168, 0.2);
+                background: linear-gradient(135deg, rgba(56, 189, 248, 0.14), rgba(167, 139, 250, 0.08));
+                border: 1px solid rgba(56, 189, 248, 0.3);
             ">
                 <span class="total-label">📈 STARLINK INVESTMENT</span>
-                <span class="total-value" id="starlinkInvestmentTotal" style="color: var(--accent-teal-light);">0.00</span>
+                <span class="total-value" id="starlinkInvestmentTotal" style="color: var(--accent-primary);">0.00</span>
             </div>
         `;
 
@@ -994,7 +1132,7 @@
         feesCard.id = 'transactionFeesDisplay';
         feesCard.innerHTML = `
             <span class="total-label">💳 TRANSACTION FEES</span>
-            <span class="total-value" id="transactionFeesTotal" style="color: var(--accent-brass);">${totalTransactionFees.toFixed(2)}</span>
+            <span class="total-value" id="transactionFeesTotal" style="color: var(--accent-gold);">${totalTransactionFees.toFixed(2)}</span>
         `;
 
         const card = document.getElementById('grandTotalCard');
@@ -1060,10 +1198,10 @@
     function applyTheme(theme) {
         if (theme === 'light') {
             document.body.classList.add('light-mode');
-            if (themeToggle) themeToggle.textContent = '🌙 Dark';
+            if (themeToggle) themeToggle.innerHTML = '<i class="bi bi-moon-stars"></i> <span>Dark</span>';
         } else {
             document.body.classList.remove('light-mode');
-            if (themeToggle) themeToggle.textContent = '☀️ Light';
+            if (themeToggle) themeToggle.innerHTML = '<i class="bi bi-sun-fill"></i> <span>Light</span>';
         }
         setStoredTheme(theme);
     }
@@ -1292,7 +1430,12 @@
 
         const dup = checkForDuplicateTransactions(dateId);
         if (dup) {
-            showToast('❌ Duplicate transaction found: ' + dup, 'error');
+            if (dup.scope === 'cross-date') {
+                showToast(`❌ ${dup.code} already exists on ${dup.conflictDate}`, 'error');
+            } else {
+                showToast(`❌ Duplicate ${dup.code} in this date`, 'error');
+            }
+            highlightDuplicateRows(dup.code);
             return;
         }
 
@@ -1338,6 +1481,7 @@
         recalculateTotalFees();
         updateTransactionFeesDisplay();
         updateSummaryDisplay();
+        updateDateFeesDisplays();
 
         savedDates[dateId] = true;
         editModes[dateId] = false;
@@ -1424,6 +1568,7 @@
         if (transactionFees[key]) delete transactionFees[key];
         recalculateTotalFees();
         updateTransactionFeesDisplay();
+        updateDateFeesDisplays();
 
         group.rows = group.rows.filter(r => r.id !== rowId);
         render();
@@ -1490,6 +1635,26 @@
 
         if (key.endsWith('_transaction')) {
             input.title = value;
+
+            // 🔥 LIVE CROSS-DATE DUPLICATE WARNING
+            const codeMatch = value.trim().match(/^([A-Z0-9]+)/);
+            if (codeMatch && codeMatch[1].length >= 6) {
+                const conflictDate = isCodeUsedElsewhere(codeMatch[1], dateId);
+                if (conflictDate) {
+                    input.classList.add('duplicate-input-warning');
+                    input.title = `⚠️ This code already exists on ${conflictDate}`;
+                    if (!input._dupWarned) {
+                        input._dupWarned = true;
+                        showToast(`⚠️ ${codeMatch[1]} already used on ${conflictDate}`, 'error');
+                        setTimeout(() => { input._dupWarned = false; }, 4000);
+                    }
+                } else {
+                    input.classList.remove('duplicate-input-warning');
+                }
+            } else {
+                input.classList.remove('duplicate-input-warning');
+            }
+
             const amountKey = key.replace('_transaction', '_amount');
             if (!value || value.trim() === '') {
                 row[amountKey] = '';
@@ -1521,6 +1686,7 @@
 
         updateTotalsOnly();
         updateSummaryDisplay();
+        updateDateFeesDisplays();
         debouncedSave();
 
         if (key.includes('_amount')) scheduleCloudSync();
@@ -1571,6 +1737,7 @@
 
         recalculateTotalFees();
         updateTransactionFeesDisplay();
+        updateDateFeesDisplays();
     }
 
     // ========================================
@@ -1708,16 +1875,16 @@
                 html += `</td></tr>`;
 
                 html += `<tr class="date-column-header">`;
-                html += `<td style="min-width:80px; font-weight:700; color:var(--accent-brass); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--table-header);"></td>`;
+                html += `<td style="min-width:80px; font-weight:700; color:var(--accent-gold); text-align:center; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; background:var(--bg-elev-2);"></td>`;
                 allColumns.forEach(col => {
                     const isCustom   = col.isCustom || false;
                     const isSavedCol = col.isSaved || false;
                     const colLabel   = getColumnLabel(col);
 
-                    html += `<td style="min-width:120px; text-align:center; background:var(--table-header); ${isCustom ? 'background: rgba(200,154,91,0.05);' : ''}" data-col-key="${col.key}">
+                    html += `<td style="min-width:120px; text-align:center; background:var(--bg-elev-2); ${isCustom ? 'background: rgba(167,139,250,0.05);' : ''}" data-col-key="${col.key}">
                         <div class="col-header-with-edit">
                             <span class="col-label" data-col-key="${col.key}" data-label="${escapeHtml(colLabel)}">${escapeHtml(colLabel)}</span>
-                            ${isCustom ? `<span style="font-weight:400; font-size:0.55rem; color:#c89a5b;">${isSavedCol ? '(saved)' : '(temp)'}</span>` : ''}
+                            ${isCustom ? `<span style="font-weight:400; font-size:0.55rem; color:#a78bfa;">${isSavedCol ? '(saved)' : '(temp)'}</span>` : ''}
                             ${canEdit ? `<div class="col-edit-actions">
                                 <button class="edit-name-btn" data-col-key="${col.key}" title="Edit column name">✏️</button>
                                 ${isCustom ? `<button class="remove-col-btn" data-col-key="${col.key}" title="Delete this column">🗑️</button>` : ''}
@@ -1725,8 +1892,8 @@
                         </div>
                     </td>`;
                 });
-                html += `<td style="min-width:70px; text-align:center; font-weight:700; color:var(--accent-brass); background:var(--table-header);">TOTAL</td>`;
-                html += `<td style="min-width:40px; background:var(--table-header);"></td>`;
+                html += `<td style="min-width:70px; text-align:center; font-weight:700; color:var(--accent-gold); background:var(--bg-elev-2);">TOTAL</td>`;
+                html += `<td style="min-width:40px; background:var(--bg-elev-2);"></td>`;
                 html += `</tr>`;
 
                 if (group.rows.length === 0) {
@@ -1769,7 +1936,7 @@
                                 }
                             }
 
-                            html += `<td class="expenditure-cell" style="padding:2px 3px; ${isCustom ? 'background: rgba(79,182,168,0.05);' : ''}" data-label="${escapeHtml(colLabel)}">
+                            html += `<td class="expenditure-cell" style="padding:2px 3px; ${isCustom ? 'background: rgba(167,139,250,0.05);' : ''}" data-label="${escapeHtml(colLabel)}">
                                 <div class="column-group ${isCustom ? 'custom-column' : ''}">
                                     <span class="field-header">Description</span>
                                     ${descDisplay}
@@ -1797,6 +1964,7 @@
                 }
 
                 const dateTotal = getDateGroupTotal(group);
+                const dateFeesTotal = getDateFeesTotal(group);
                 html += `<tr class="date-total-row">`;
                 html += `<td colspan="${allColumns.length + 2}" style="padding:8px 16px;" data-label="">`;
                 html += `<div class="date-total-content">
@@ -1808,8 +1976,14 @@
                         ` : ''}
                     </div>
                     <div class="date-total-right">
-                        <span class="date-total-label">Date Total Amount:</span>
-                        <span class="date-total-amount">${dateTotal.toFixed(2)}</span>
+                        <div class="date-total-fees-block">
+                            <span class="date-total-label"><i class="bi bi-credit-card-2-front"></i> Date Fees:</span>
+                            <span class="date-total-fees-amount" data-date-fees-id="${group.id}">${dateFeesTotal.toFixed(2)}</span>
+                        </div>
+                        <div class="date-total-amount-block">
+                            <span class="date-total-label">Date Total Amount:</span>
+                            <span class="date-total-amount">${dateTotal.toFixed(2)}</span>
+                        </div>
                         ${canEdit ? `<div class="date-total-add-row">
                             <button class="add-row-inline-btn" data-date-id="${group.id}">➕ Add Row</button>
                         </div>` : ''}
@@ -1834,7 +2008,7 @@
             }
         });
         const totalColSum = Object.values(colTotals).reduce((a, b) => a + b, 0);
-        html += `<td class="column-total-cell grand-column-total" data-label="Total" style="font-weight:700; color:var(--accent-teal);">${totalColSum.toFixed(2)}</td>`;
+        html += `<td class="column-total-cell grand-column-total" data-label="Total" style="font-weight:700; color:var(--accent-primary);">${totalColSum.toFixed(2)}</td>`;
         html += `<td></td>`;
         html += `</tr>`;
         html += '</tfoot></tbody></table>';
@@ -1923,6 +2097,7 @@
         setTimeout(() => {
             updateTotalsOnly();
             updateSummaryDisplay();
+            updateDateFeesDisplays();
         }, 50);
 
         const searchInput = document.getElementById('searchInput');
@@ -2035,8 +2210,10 @@
                 }
 
                 const dateTotal = getDateGroupTotal(group);
+                const dateFees = getDateFeesTotal(group);
                 printHtml += `<tr style="background:#f0ece4; font-weight:700;">
-                    <td colspan="${allColumns.length + 1}" style="text-align:right; padding-right:20px;">Date Total:</td>
+                    <td colspan="${allColumns.length}" style="text-align:right; padding-right:20px;">Date Total:</td>
+                    <td style="text-align:right; color:#b45309;">Fees: ${dateFees.toFixed(2)}</td>
                     <td>${dateTotal.toFixed(2)}</td>
                 </tr>`;
             });
@@ -2145,6 +2322,7 @@
             render();
             updateSummaryDisplay();
             updateTransactionFeesDisplay();
+            updateDateFeesDisplays();
             return;
         }
         mainAppInitialized = true;
@@ -2186,6 +2364,7 @@
                     setTimeout(() => {
                         updateTotalsOnly();
                         updateSummaryDisplay();
+                        updateDateFeesDisplays();
                     }, 200);
                 });
             }, 1000);
@@ -2393,4 +2572,293 @@
         document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
     }
 
+})();
+
+
+/* ================================================================
+   PHASE 2 — CINEMATIC ANIMATION ENHANCERS
+   Number roll-up removed. Cursor glow, particles, magnetic buttons,
+   ripple, tilt card, confetti, marquee preserved.
+   ================================================================ */
+(function phase2Animations() {
+    'use strict';
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isTouchDevice = window.matchMedia('(hover: none)').matches || window.innerWidth <= 768;
+
+    /* ---------- 1. CURSOR GLOW ---------- */
+    const cursorGlow = document.getElementById('cursorGlow');
+    if (cursorGlow && !isTouchDevice && !prefersReducedMotion) {
+        let mx = 0, my = 0, cx = 0, cy = 0;
+        document.addEventListener('mousemove', (e) => {
+            mx = e.clientX;
+            my = e.clientY;
+            cursorGlow.classList.add('active');
+        });
+        document.addEventListener('mouseleave', () => cursorGlow.classList.remove('active'));
+
+        function animateCursor() {
+            cx += (mx - cx) * 0.12;
+            cy += (my - cy) * 0.12;
+            cursorGlow.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
+            requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+    }
+
+    /* ---------- 2. PARTICLE FIELD ---------- */
+    const particleCanvas = document.getElementById('particleCanvas');
+    if (particleCanvas && !prefersReducedMotion) {
+        const ctx = particleCanvas.getContext('2d');
+        let particles = [];
+        const PARTICLE_COUNT = isTouchDevice ? 25 : 55;
+
+        function resizeParticleCanvas() {
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        }
+        resizeParticleCanvas();
+        window.addEventListener('resize', resizeParticleCanvas);
+
+        const COLORS = ['56, 189, 248', '167, 139, 250', '244, 114, 182', '251, 191, 36'];
+
+        class Particle {
+            constructor() { this.reset(true); }
+            reset(initial) {
+                this.x = Math.random() * particleCanvas.width;
+                this.y = initial ? Math.random() * particleCanvas.height : particleCanvas.height + 10;
+                this.size = Math.random() * 1.8 + 0.4;
+                this.speedY = -(Math.random() * 0.35 + 0.1);
+                this.speedX = (Math.random() - 0.5) * 0.25;
+                this.opacity = Math.random() * 0.5 + 0.15;
+                this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                this.pulseSpeed = Math.random() * 0.02 + 0.005;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                this.pulsePhase += this.pulseSpeed;
+                if (this.y < -10 || this.x < -10 || this.x > particleCanvas.width + 10) {
+                    this.reset(false);
+                }
+            }
+            draw() {
+                const pulse = (Math.sin(this.pulsePhase) + 1) * 0.5;
+                const alpha = this.opacity * (0.6 + pulse * 0.4);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color}, ${alpha})`;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = `rgba(${this.color}, 0.6)`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+    }
+
+    /* ---------- 3. MAGNETIC BUTTONS ---------- */
+    function attachMagnetic(btn) {
+        if (!btn || btn._magneticAttached || isTouchDevice || prefersReducedMotion) return;
+        if (btn.id === 'loginBtn' || btn.id === 'forgotSubmitBtn' || btn.id === 'changePasswordSaveBtn') return;
+        btn._magneticAttached = true;
+
+        btn.addEventListener('mousemove', (e) => {
+            const rect = btn.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const cx = rect.width / 2;
+            const cy = rect.height / 2;
+            const dx = (x - cx) / cx;
+            const dy = (y - cy) / cy;
+            const strength = 6;
+
+            btn.style.setProperty('--x', `${(x / rect.width) * 100}%`);
+            btn.style.setProperty('--y', `${(y / rect.height) * 100}%`);
+            btn.style.transform = `translate(${dx * strength}px, ${dy * strength - 2}px)`;
+        });
+
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform = '';
+        });
+    }
+
+    function attachMagneticToAll() {
+        document.querySelectorAll('.magnetic-btn, .btn').forEach(attachMagnetic);
+    }
+
+    /* ---------- 4. BUTTON RIPPLE ---------- */
+    function attachRipple(btn) {
+        if (!btn || btn._rippleAttached) return;
+        btn._rippleAttached = true;
+
+        btn.addEventListener('click', function (e) {
+            const ripple = this.querySelector('.btn-ripple');
+            if (!ripple) return;
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            ripple.style.width = ripple.style.height = `${size}px`;
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            this.classList.remove('rippling');
+            void this.offsetWidth;
+            this.classList.add('rippling');
+            setTimeout(() => this.classList.remove('rippling'), 900);
+        });
+    }
+
+    function attachRippleToAll() {
+        document.querySelectorAll('.btn-add, .btn-filter, .btn-pdf, .btn-sync, .btn-admin, .btn-logout, .btn-theme, .btn-add-secondary').forEach(attachRipple);
+    }
+
+    /* ---------- 5. TILT CARD ---------- */
+    function attachTilt(card) {
+        if (!card || card._tiltAttached || isTouchDevice || prefersReducedMotion) return;
+        card._tiltAttached = true;
+
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width - 0.5;
+            const y = (e.clientY - rect.top) / rect.height - 0.5;
+            const maxTilt = 3;
+            card.style.transform = `perspective(1400px) rotateY(${x * maxTilt}deg) rotateX(${-y * maxTilt}deg)`;
+        });
+
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = '';
+        });
+    }
+
+    function attachTiltToAll() {
+        document.querySelectorAll('.tilt-card').forEach(attachTilt);
+    }
+
+    /* ---------- 6. CONFETTI ---------- */
+    const confettiCanvas = document.getElementById('confettiCanvas');
+    let confettiCtx = null;
+    let confettiParticles = [];
+    let confettiAnimationId = null;
+
+    function initConfetti() {
+        if (!confettiCanvas || prefersReducedMotion) return;
+        confettiCanvas.width = window.innerWidth;
+        confettiCanvas.height = window.innerHeight;
+        confettiCtx = confettiCanvas.getContext('2d');
+    }
+    initConfetti();
+    window.addEventListener('resize', () => {
+        if (confettiCanvas) {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+    });
+
+    function fireConfetti(x, y) {
+        if (!confettiCanvas || !confettiCtx || prefersReducedMotion) return;
+        confettiCanvas.classList.add('active');
+        const COLORS = ['#38bdf8', '#a78bfa', '#f472b6', '#fbbf24', '#34d399', '#f87171'];
+        const originX = x || window.innerWidth / 2;
+        const originY = y || window.innerHeight / 2;
+
+        for (let i = 0; i < 90; i++) {
+            const angle = (Math.random() * Math.PI * 2);
+            const speed = Math.random() * 8 + 3;
+            confettiParticles.push({
+                x: originX, y: originY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 4,
+                size: Math.random() * 6 + 3,
+                color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.3,
+                life: 1,
+                decay: Math.random() * 0.012 + 0.008,
+                shape: Math.random() > 0.5 ? 'circle' : 'rect'
+            });
+        }
+        if (!confettiAnimationId) animateConfetti();
+    }
+
+    function animateConfetti() {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        confettiParticles = confettiParticles.filter(p => p.life > 0);
+        confettiParticles.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.vx *= 0.99;
+            p.rotation += p.rotationSpeed; p.life -= p.decay;
+            confettiCtx.save();
+            confettiCtx.globalAlpha = p.life;
+            confettiCtx.translate(p.x, p.y);
+            confettiCtx.rotate(p.rotation);
+            confettiCtx.fillStyle = p.color;
+            if (p.shape === 'circle') {
+                confettiCtx.beginPath();
+                confettiCtx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+                confettiCtx.fill();
+            } else {
+                confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            }
+            confettiCtx.restore();
+        });
+        if (confettiParticles.length > 0) {
+            confettiAnimationId = requestAnimationFrame(animateConfetti);
+        } else {
+            confettiAnimationId = null;
+            confettiCanvas.classList.remove('active');
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('.save-btn, .save-col-btn, #userModalSave');
+        if (target) {
+            const rect = target.getBoundingClientRect();
+            fireConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+    });
+
+    /* ---------- 7. MARQUEE VISIBILITY ---------- */
+    const marqueeTicker = document.getElementById('marqueeTicker');
+    function toggleMarquee() {
+        if (!marqueeTicker) return;
+        const mainApp = document.getElementById('mainApp');
+        const isMainVisible = mainApp && mainApp.style.display !== 'none';
+        if (isMainVisible) marqueeTicker.classList.add('visible');
+        else marqueeTicker.classList.remove('visible');
+    }
+    const mainAppEl = document.getElementById('mainApp');
+    if (mainAppEl) {
+        new MutationObserver(toggleMarquee).observe(mainAppEl, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    /* ---------- 8. REATTACH ON DYNAMIC DOM CHANGES ---------- */
+    const tableWrapper = document.getElementById('tableWrapper');
+    if (tableWrapper) {
+        new MutationObserver(() => {
+            attachMagneticToAll();
+            attachRippleToAll();
+        }).observe(tableWrapper, { childList: true, subtree: true });
+    }
+
+    /* ---------- 9. INITIAL ATTACH ---------- */
+    function initPhase2() {
+        attachMagneticToAll();
+        attachRippleToAll();
+        attachTiltToAll();
+        toggleMarquee();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(initPhase2, 300));
+    } else {
+        setTimeout(initPhase2, 300);
+    }
 })();
