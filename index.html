@@ -10,234 +10,283 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Back to Home button — inside login card */
+        
+        .back-home-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #c7d5e6;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            margin-bottom: 12px;
+        }
+        
+        .back-home-inline:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            transform: translateX(-2px);
+        }
+        
+        .back-home-inline .back-home-arrow {
+            font-size: 0.9rem;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .back-home-inline:hover .back-home-arrow {
+            transform: translateX(-4px) scale(1.15);
+        }
+        /* Back to Home button */
+    </style>
 </head>
 
+
 <body>
-    <!-- ======================================== -->
-    <!-- LOGIN SCREEN -->
-    <!-- ======================================== -->
-    <div id="loginScreen" class="login-screen">
-        <div class="login-container">
-            <div class="login-header">
-                <div class="login-icon">📡</div>
-                <h1>STARLINK</h1>
-                <p>General Connection Expenditure</p>
-            </div>
-            <div class="login-body">
-                <div id="loginError" class="login-error" style="display:none;"></div>
-                <div id="loginSuccess" class="login-success" style="display:none;">✅ Login successful!</div>
 
-                <div class="login-input-group">
-                    <label>Username</label>
-                    <input type="text" id="usernameInput" class="login-input" placeholder="Enter your username" autocomplete="username">
+    <body>
+        <!-- ======================================== -->
+        <!-- BACK TO HOME BUTTON -->
+        <!-- ======================================== -->
+
+
+        <!-- ======================================== -->
+        <!-- LOGIN SCREEN -->
+        <!-- ======================================== -->
+        <div id="loginScreen" class="login-screen">
+            <div class="login-container">
+                <div class="login-header">
+                    <a href="https://starlinkultranet.netlify.app" class="back-home-inline" target="_blank" rel="noopener noreferrer">
+                        <span class="back-home-arrow">←</span>
+                        <span>Back to Home</span>
+                    </a>
+                    <div class="login-icon">📡</div>
+                    <h1>STARLINK</h1>
+                    <p>General Connection Expenditure</p>
                 </div>
+                <div class="login-body">
+                    <div id="loginError" class="login-error" style="display:none;"></div>
+                    <div id="loginSuccess" class="login-success" style="display:none;">✅ Login successful!</div>
 
-                <div class="login-input-group">
-                    <label>Password</label>
-                    <input type="password" id="passwordInput" class="login-input" placeholder="Enter your password" autocomplete="current-password">
-                </div>
+                    <div class="login-input-group">
+                        <label>Username</label>
+                        <input type="text" id="usernameInput" class="login-input" placeholder="Enter your username" autocomplete="username">
+                    </div>
 
-                <button id="loginBtn" class="login-btn">Login</button>
+                    <div class="login-input-group">
+                        <label>Password</label>
+                        <input type="password" id="passwordInput" class="login-input" placeholder="Enter your password" autocomplete="current-password">
+                    </div>
 
-                <div class="login-links">
-                    <button id="forgotPasswordBtn" class="forgot-link">Forgot Password?</button>
-                    <span>|</span>
-                    <button id="changePasswordBtn" class="forgot-link">Change Password</button>
-                </div>
-            </div>
-            <div class="login-footer">
-                <span>© 2026 Starlink Expenditure System</span>
-            </div>
-        </div>
-    </div>
+                    <button id="loginBtn" class="login-btn">Login</button>
 
-    <!-- ======================================== -->
-    <!-- FORGOT PASSWORD SCREEN -->
-    <!-- ======================================== -->
-    <div id="forgotScreen" class="login-screen" style="display:none;">
-        <div class="login-container">
-            <div class="login-header">
-                <div class="login-icon">🔐</div>
-                <h1>STARLINK</h1>
-                <p>Reset Password</p>
-            </div>
-            <div class="login-body">
-                <div id="forgotError" class="login-error" style="display:none;"></div>
-                <div id="forgotSuccess" class="login-success" style="display:none;"></div>
-
-                <div class="login-input-group">
-                    <label>Username</label>
-                    <input type="text" id="forgotUsername" class="login-input" placeholder="Enter your username">
-                </div>
-
-                <button id="forgotSubmitBtn" class="login-btn">Reset Password</button>
-
-                <div class="login-links">
-                    <button id="backToLoginBtn" class="forgot-link">← Back to Login</button>
-                </div>
-            </div>
-            <div class="login-footer">
-                <span>© 2026 Starlink Expenditure System</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======================================== -->
-    <!-- CHANGE PASSWORD SCREEN -->
-    <!-- ======================================== -->
-    <div id="changePasswordScreen" class="login-screen" style="display:none;">
-        <div class="login-container">
-            <div class="login-header">
-                <div class="login-icon">🔑</div>
-                <h1>STARLINK</h1>
-                <p>Change Password</p>
-            </div>
-            <div class="login-body">
-                <div id="changePasswordError" class="login-error" style="display:none;"></div>
-                <div id="changePasswordSuccess" class="login-success" style="display:none;"></div>
-
-                <div class="login-input-group">
-                    <label>Current Password</label>
-                    <input type="password" id="changePasswordOld" class="login-input" placeholder="Enter current password">
-                </div>
-
-                <div class="login-input-group">
-                    <label>New Password</label>
-                    <input type="password" id="changePasswordNew" class="login-input" placeholder="Enter new password">
-                </div>
-
-                <div class="login-input-group">
-                    <label>Confirm New Password</label>
-                    <input type="password" id="changePasswordConfirm" class="login-input" placeholder="Confirm new password">
-                </div>
-
-                <button id="changePasswordSaveBtn" class="login-btn">Update Password</button>
-
-                <div class="login-links">
-                    <button id="changePasswordBackBtn" class="forgot-link">← Back to Login</button>
-                </div>
-            </div>
-            <div class="login-footer">
-                <span>© 2026 Starlink Expenditure System</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======================================== -->
-    <!-- MAIN APP -->
-    <!-- ======================================== -->
-    <div id="mainApp" class="app-wrapper" style="display:none;">
-        <header class="app-header">
-            <div class="header-left">
-                <h1>📡 STARLINK</h1>
-                <span class="subtitle">GENERAL CONNECTION EXPENDITURE</span>
-                <button id="themeToggle" class="btn btn-theme">🌙 Dark</button>
-                <span id="userDisplay" class="user-badge"></span>
-                <button id="logoutBtn" class="btn btn-logout">🚪 Logout</button>
-                <button id="adminPanelBtn" class="btn btn-admin" style="display:none;">👑 Admin</button>
-            </div>
-            <div class="filter-panel">
-                <label>📅 From</label>
-                <input type="date" id="dateFrom" class="date-input">
-                <label>To</label>
-                <input type="date" id="dateTo" class="date-input">
-                <button id="applyFilterBtn" class="btn btn-filter">🔍 Apply</button>
-                <button id="clearFilterBtn" class="btn btn-filter">✕ Clear</button>
-                <button id="printPdfBtn" class="btn btn-pdf">📄 PDF</button>
-                <button id="syncNowBtn" class="btn btn-sync">☁️ Sync</button>
-            </div>
-        </header>
-
-        <main>
-            <!-- Search Bar -->
-            <div class="search-bar-row">
-                <div class="search-wrapper">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="searchInput" class="search-input" placeholder="Search by transaction code...">
-                    <button id="clearSearchBtn" class="search-clear-btn" style="display:none;">✕</button>
-                </div>
-                <div id="searchResultInfo" class="search-result-info"></div>
-            </div>
-
-            <main>
-                <div class="table-container">
-                    <div id="tableWrapper" class="table-responsive"></div>
-                </div>
-
-                <div class="action-row">
-                    <button id="addDateBtn" class="btn btn-add">➕ Add New Date Entry</button>
-                    <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
-                </div>
-
-                <div class="totals-grid">
-                    <div class="total-card" id="grandTotalCard">
-                        <span class="total-label">💰 GRAND TOTAL</span>
-                        <span class="total-value" id="grandTotal">0.00</span>
+                    <div class="login-links">
+                        <button id="forgotPasswordBtn" class="forgot-link">Forgot Password?</button>
+                        <span>|</span>
+                        <button id="changePasswordBtn" class="forgot-link">Change Password</button>
                     </div>
                 </div>
-                <p class="hint">* Enter amounts in any field — totals update automatically.</p>
-            </main>
-    </div>
-
-    <!-- ======================================== -->
-    <!-- READ MORE MODAL -->
-    <!-- ======================================== -->
-    <div id="readMoreModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>📄 Full Description</h3>
-                <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
-        </div>
-    </div>
-
-    <!-- ======================================== -->
-    <!-- ADMIN PANEL -->
-    <!-- ======================================== -->
-    <div id="adminPanel" class="modal" style="display:none;">
-        <div class="modal-content" style="max-width:700px;">
-            <div class="modal-header">
-                <h3>👑 Admin Panel - User Management</h3>
-                <button class="modal-close-btn" id="adminPanelClose">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-                    <h4 style="color:var(--text-primary);">Users</h4>
-                    <button id="addUserBtn" class="btn btn-add" style="padding:6px 16px; font-size:0.8rem;">➕ Add User</button>
+                <div class="login-footer">
+                    <span>© 2026 Starlink Expenditure System</span>
                 </div>
-                <div id="userList"></div>
-                <button id="adminPanelCloseBtn" class="btn btn-filter" style="margin-top:16px; width:100%;">Close</button>
             </div>
         </div>
-    </div>
 
-    <!-- ======================================== -->
-    <!-- USER MODAL -->
-    <!-- ======================================== -->
-    <div id="userModal" class="modal" style="display:none;">
-        <div class="modal-content" style="max-width:450px;">
-            <div class="modal-header">
-                <h3 id="userModalTitle">Add User</h3>
-                <button class="modal-close-btn" id="userModalClose">&times;</button>
+        <!-- ======================================== -->
+        <!-- FORGOT PASSWORD SCREEN -->
+        <!-- ======================================== -->
+        <div id="forgotScreen" class="login-screen" style="display:none;">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">🔐</div>
+                    <h1>STARLINK</h1>
+                    <p>Reset Password</p>
+                </div>
+                <div class="login-body">
+                    <div id="forgotError" class="login-error" style="display:none;"></div>
+                    <div id="forgotSuccess" class="login-success" style="display:none;"></div>
+
+                    <div class="login-input-group">
+                        <label>Username</label>
+                        <input type="text" id="forgotUsername" class="login-input" placeholder="Enter your username">
+                    </div>
+
+                    <button id="forgotSubmitBtn" class="login-btn">Reset Password</button>
+
+                    <div class="login-links">
+                        <button id="backToLoginBtn" class="forgot-link">← Back to Login</button>
+                    </div>
+                </div>
+                <div class="login-footer">
+                    <span>© 2026 Starlink Expenditure System</span>
+                </div>
             </div>
-            <div class="modal-body">
-                <div id="userModalError" class="login-error" style="display:none;"></div>
-                <input type="text" id="userModalUsername" placeholder="Username" class="login-input">
-                <input type="text" id="userModalPassword" placeholder="Password" class="login-input">
-                <select id="userModalRole" class="login-input">
+        </div>
+
+        <!-- ======================================== -->
+        <!-- CHANGE PASSWORD SCREEN -->
+        <!-- ======================================== -->
+        <div id="changePasswordScreen" class="login-screen" style="display:none;">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">🔑</div>
+                    <h1>STARLINK</h1>
+                    <p>Change Password</p>
+                </div>
+                <div class="login-body">
+                    <div id="changePasswordError" class="login-error" style="display:none;"></div>
+                    <div id="changePasswordSuccess" class="login-success" style="display:none;"></div>
+
+                    <div class="login-input-group">
+                        <label>Current Password</label>
+                        <input type="password" id="changePasswordOld" class="login-input" placeholder="Enter current password">
+                    </div>
+
+                    <div class="login-input-group">
+                        <label>New Password</label>
+                        <input type="password" id="changePasswordNew" class="login-input" placeholder="Enter new password">
+                    </div>
+
+                    <div class="login-input-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="changePasswordConfirm" class="login-input" placeholder="Confirm new password">
+                    </div>
+
+                    <button id="changePasswordSaveBtn" class="login-btn">Update Password</button>
+
+                    <div class="login-links">
+                        <button id="changePasswordBackBtn" class="forgot-link">← Back to Login</button>
+                    </div>
+                </div>
+                <div class="login-footer">
+                    <span>© 2026 Starlink Expenditure System</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================================== -->
+        <!-- MAIN APP -->
+        <!-- ======================================== -->
+        <div id="mainApp" class="app-wrapper" style="display:none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <h1>📡 STARLINK</h1>
+                    <span class="subtitle">GENERAL CONNECTION EXPENDITURE</span>
+                    <button id="themeToggle" class="btn btn-theme">🌙 Dark</button>
+                    <span id="userDisplay" class="user-badge"></span>
+                    <button id="logoutBtn" class="btn btn-logout">🚪 Logout</button>
+                    <button id="adminPanelBtn" class="btn btn-admin" style="display:none;">👑 Admin</button>
+                </div>
+                <div class="filter-panel">
+                    <label>📅 From</label>
+                    <input type="date" id="dateFrom" class="date-input">
+                    <label>To</label>
+                    <input type="date" id="dateTo" class="date-input">
+                    <button id="applyFilterBtn" class="btn btn-filter">🔍 Apply</button>
+                    <button id="clearFilterBtn" class="btn btn-filter">✕ Clear</button>
+                    <button id="printPdfBtn" class="btn btn-pdf">📄 PDF</button>
+                    <button id="syncNowBtn" class="btn btn-sync">☁️ Sync</button>
+                </div>
+            </header>
+
+            <main>
+                <!-- Search Bar -->
+                <div class="search-bar-row">
+                    <div class="search-wrapper">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Search by transaction code...">
+                        <button id="clearSearchBtn" class="search-clear-btn" style="display:none;">✕</button>
+                    </div>
+                    <div id="searchResultInfo" class="search-result-info"></div>
+                </div>
+
+                <main>
+                    <div class="table-container">
+                        <div id="tableWrapper" class="table-responsive"></div>
+                    </div>
+
+                    <div class="action-row">
+                        <button id="addDateBtn" class="btn btn-add">➕ Add New Date Entry</button>
+                        <button id="addRowBtn" class="btn btn-add-secondary">➕ Add Transaction Row</button>
+                    </div>
+
+                    <div class="totals-grid">
+                        <div class="total-card" id="grandTotalCard">
+                            <span class="total-label">💰 GRAND TOTAL</span>
+                            <span class="total-value" id="grandTotal">0.00</span>
+                        </div>
+                    </div>
+                    <p class="hint">* Enter amounts in any field — totals update automatically.</p>
+                </main>
+        </div>
+
+        <!-- ======================================== -->
+        <!-- READ MORE MODAL -->
+        <!-- ======================================== -->
+        <div id="readMoreModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📄 Full Description</h3>
+                    <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+            </div>
+        </div>
+
+        <!-- ======================================== -->
+        <!-- ADMIN PANEL -->
+        <!-- ======================================== -->
+        <div id="adminPanel" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width:700px;">
+                <div class="modal-header">
+                    <h3>👑 Admin Panel - User Management</h3>
+                    <button class="modal-close-btn" id="adminPanelClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                        <h4 style="color:var(--text-primary);">Users</h4>
+                        <button id="addUserBtn" class="btn btn-add" style="padding:6px 16px; font-size:0.8rem;">➕ Add User</button>
+                    </div>
+                    <div id="userList"></div>
+                    <button id="adminPanelCloseBtn" class="btn btn-filter" style="margin-top:16px; width:100%;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================================== -->
+        <!-- USER MODAL -->
+        <!-- ======================================== -->
+        <div id="userModal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width:450px;">
+                <div class="modal-header">
+                    <h3 id="userModalTitle">Add User</h3>
+                    <button class="modal-close-btn" id="userModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="userModalError" class="login-error" style="display:none;"></div>
+                    <input type="text" id="userModalUsername" placeholder="Username" class="login-input">
+                    <input type="text" id="userModalPassword" placeholder="Password" class="login-input">
+                    <select id="userModalRole" class="login-input">
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                 </select>
-                <div style="display:flex; gap:10px; margin-top:16px;">
-                    <button id="userModalSave" class="btn btn-add" style="flex:1;">Save</button>
-                    <button id="userModalCancel" class="btn btn-filter" style="flex:1;">Cancel</button>
+                    <div style="display:flex; gap:10px; margin-top:16px;">
+                        <button id="userModalSave" class="btn btn-add" style="flex:1;">Save</button>
+                        <button id="userModalCancel" class="btn btn-filter" style="flex:1;">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="script.js"></script>
-</body>
+        <script src="script.js"></script>
+    </body>
 
 </html>
