@@ -2665,3 +2665,283 @@ td.cell-highlight {
         transition-duration: 0.01ms !important;
     }
 }
+
+
+/* ================================================================
+   PER-DATE TRANSACTION FEES DISPLAY
+   ================================================================ */
+
+.date-total-row .date-total-fees-block,
+.date-total-row .date-total-amount-block {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    transition: all 0.4s var(--ease-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.date-total-row .date-total-amount-block {
+    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(56, 189, 248, 0.25);
+}
+
+.date-total-row .date-total-fees-block:hover,
+.date-total-row .date-total-amount-block:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+
+.date-total-row .date-total-fees-block::before,
+.date-total-row .date-total-amount-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.12) 50%, transparent 60%);
+    transform: translateX(-120%);
+    transition: transform 0.9s var(--ease-smooth);
+    pointer-events: none;
+}
+
+.date-total-row .date-total-fees-block:hover::before,
+.date-total-row .date-total-amount-block:hover::before {
+    transform: translateX(120%);
+}
+
+.date-total-row .date-total-fees-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--accent-gold);
+    letter-spacing: -0.03em;
+    text-shadow: 0 0 25px rgba(251, 191, 36, 0.4);
+    transition: all 0.4s var(--ease-spring);
+    display: inline-block;
+}
+
+
+/* Pulse animation when the value changes */
+
+.date-total-row .date-total-fees-amount.updated {
+    animation: feesPulse 0.9s var(--ease-spring);
+}
+
+@keyframes feesPulse {
+    0% {
+        transform: scale(1);
+        color: var(--accent-gold);
+    }
+    40% {
+        transform: scale(1.25);
+        color: #ffffff;
+        text-shadow: 0 0 40px rgba(251, 191, 36, 0.9);
+    }
+    100% {
+        transform: scale(1);
+        color: var(--accent-gold);
+    }
+}
+
+.date-total-row .date-total-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--accent-primary);
+    letter-spacing: -0.03em;
+    text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+}
+
+.date-total-row .date-total-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.date-total-row .date-total-label i {
+    color: var(--accent-gold);
+    font-size: 0.85rem;
+}
+
+
+/* Right block layout */
+
+.date-total-row .date-total-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+
+/* Mobile adjustments */
+
+@media (max-width: 768px) {
+    .date-total-row .date-total-right {
+        width: 100%;
+        justify-content: center;
+        gap: 8px;
+    }
+    .date-total-row .date-total-fees-block,
+    .date-total-row .date-total-amount-block {
+        flex: 1 1 auto;
+        justify-content: center;
+        padding: 8px 14px;
+        min-width: 140px;
+    }
+    .date-total-row .date-total-fees-amount,
+    .date-total-row .date-total-amount {
+        font-size: 1rem;
+    }
+    .date-total-row .date-total-label {
+        font-size: 0.68rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .date-total-row .date-total-fees-block,
+    .date-total-row .date-total-amount-block {
+        min-width: 120px;
+        padding: 7px 12px;
+    }
+    .date-total-row .date-total-fees-amount,
+    .date-total-row .date-total-amount {
+        font-size: 0.92rem;
+    }
+    .date-total-row .date-total-label {
+        font-size: 0.62rem;
+    }
+}
+
+
+/* ================================================================
+   DUPLICATE TRANSACTION WARNINGS
+   ================================================================ */
+
+
+/* Row-level highlight when a duplicate is rejected on save */
+
+tr.duplicate-warning {
+    animation: dupRowShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    outline: 2px solid var(--accent-red) !important;
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+    background: rgba(248, 113, 113, 0.08) !important;
+}
+
+@keyframes dupRowShake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    15% {
+        transform: translateX(-6px);
+    }
+    30% {
+        transform: translateX(6px);
+    }
+    45% {
+        transform: translateX(-5px);
+    }
+    60% {
+        transform: translateX(5px);
+    }
+    75% {
+        transform: translateX(-3px);
+    }
+    90% {
+        transform: translateX(3px);
+    }
+}
+
+td.duplicate-cell {
+    background: rgba(248, 113, 113, 0.12) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-red);
+    border-radius: var(--radius-xs);
+    animation: dupCellPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dupCellPulse {
+    0%,
+    100% {
+        box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 0.6);
+    }
+    50% {
+        box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 1), 0 0 20px rgba(248, 113, 113, 0.4);
+    }
+}
+
+
+/* Live warning while typing a duplicate code */
+
+.trans-input.duplicate-input-warning {
+    border-color: var(--accent-red) !important;
+    background: rgba(248, 113, 113, 0.08) !important;
+    box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18), 0 0 20px rgba(248, 113, 113, 0.2) !important;
+    animation: inputWarningPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes inputWarningPulse {
+    0%,
+    100% {
+        border-color: rgba(248, 113, 113, 0.6);
+    }
+    50% {
+        border-color: rgba(248, 113, 113, 1);
+    }
+}/* ================================================================
+   DUPLICATE TRANSACTION WARNINGS
+   ================================================================ */
+
+tr.duplicate-warning {
+    animation: dupRowShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    outline: 2px solid var(--accent-red) !important;
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+    background: rgba(248, 113, 113, 0.08) !important;
+}
+
+@keyframes dupRowShake {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-6px); }
+    30% { transform: translateX(6px); }
+    45% { transform: translateX(-5px); }
+    60% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
+    90% { transform: translateX(3px); }
+}
+
+td.duplicate-cell {
+    background: rgba(248, 113, 113, 0.12) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-red);
+    border-radius: var(--radius-xs);
+    animation: dupCellPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dupCellPulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 0.6); }
+    50% { box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 1), 0 0 20px rgba(248, 113, 113, 0.4); }
+}
+
+.trans-input.duplicate-input-warning {
+    border-color: var(--accent-red) !important;
+    background: rgba(248, 113, 113, 0.08) !important;
+    box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18), 0 0 20px rgba(248, 113, 113, 0.2) !important;
+    animation: inputWarningPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes inputWarningPulse {
+    0%, 100% { border-color: rgba(248, 113, 113, 0.6); }
+    50% { border-color: rgba(248, 113, 113, 1); }
+}
