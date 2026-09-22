@@ -4,6 +4,8 @@
 //
 // PHASE 2 — Cinematic UI (cursor glow, particles, magnetic buttons, ripple, confetti)
 // PER-DATE FEES — Every date footer displays its own total transaction fees.
+//   ▸ Fees SUM across every transaction column per row (no overwrite)
+//   ▸ AUTO-HEAL: frozen fee map is always rebuilt from live transaction codes on load
 // GLOBAL DUPLICATE PROTECTION — Same transaction code cannot exist on two dates.
 
 (function() {
@@ -68,6 +70,10 @@
             if (v === '' || v === null || v === undefined) return 0;
             const n = typeof v === 'number' ? v : parseFloat(v);
             return isNaN(n) ? 0 : n;
+        }
+
+        function round2(n) {
+            return Math.round((n || 0) * 100) / 100;
         }
 
         function showToast(message, type = 'info') {
@@ -139,7 +145,7 @@
                         total += getColumnAmount(row, colKey);
                     });
                 });
-                return Math.round(total * 100) / 100;
+                return round2(total);
             }
 
             const commonExpenditureKey = findColumnKey('COMMON EXPENDITURE');
@@ -152,11 +158,10 @@
             const kairoRoutersTotal = sumColumn(kairoRoutersKey);
             const starlinkInvestmentTotal = sumColumn(starlinkInvestmentKey);
 
-            const starlinkVirtualInvestment =
-                Math.round(
-                    ((5 / 6) * commonExpenditureTotal +
-                        (routersTotal - kairoRoutersTotal)) * 100
-                ) / 100;
+            const starlinkVirtualInvestment = round2(
+                (5 / 6) * commonExpenditureTotal +
+                (routersTotal - kairoRoutersTotal)
+            );
 
             const summary = {
                 commonExpenditureTotal,
@@ -164,26 +169,9 @@
                 kairoRoutersTotal,
                 starlinkInvestmentTotal,
                 starlinkVirtualInvestment,
-                totalTransactionFees: Math.round(totalTransactionFees * 100) / 100,
+                totalTransactionFees: round2(totalTransactionFees),
                 lastUpdated: new Date().toISOString()
             };
-
-            if (summary.commonExpenditureTotal === 0 &&
-                summary.routersTotal === 0 &&
-                summary.starlinkVirtualInvestment === 0 &&
-                data && data.length > 0) {
-
-                let hasAnyAmounts = false;
-                data.forEach(g => (g.rows || []).forEach(r => {
-                    allCols.forEach(c => {
-                        if (safeNum(r[c.key + '_amount']) > 0) hasAnyAmounts = true;
-                    });
-                }));
-
-                if (hasAnyAmounts) {
-                    console.warn('⚠️ buildSummary: summary is 0 but raw data has amounts!');
-                }
-            }
 
             console.log('📊 Summary computed:', summary);
             return summary;
@@ -287,10 +275,9 @@
                         columnNameEdits = cloudData.columnNameEdits;
                         saveColumnNameEdits();
                     }
-                    if (cloudData.transactionFees) {
-                        transactionFees = cloudData.transactionFees || {};
-                        totalTransactionFees = cloudData.totalTransactionFees || 0;
-                    }
+
+                    // ⚠️ IMPORTANT: DO NOT trust cloudData.transactionFees —
+                    // We rebuild it fresh from live transaction codes below.
 
                     rebuildFeesFromData();
                     data = sortDataByDate(data);
@@ -315,27 +302,31 @@
         }
 
         // ========================================
-        // FEES REBUILD
+        // FEES REBUILD (AUTO-HEAL)
+        // Always recomputes fees from live transaction codes.
+        // Ignores any stale frozen values.
         // ========================================
         function rebuildFeesFromData() {
+            const oldTotal = round2(totalTransactionFees);
             transactionFees = {};
             totalTransactionFees = 0;
             const allCols = getAllColumns();
 
             data.forEach(group => {
                 group.rows.forEach(row => {
-                    let rowFee = null;
+                    let rowFee = 0;
                     allCols.forEach(col => {
                         const transKey = col.key + '_transaction';
                         const transVal = row[transKey];
                         if (transVal && transVal.trim() !== '') {
                             const parsed = parseMpesaMessage(transVal);
                             if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
-                                rowFee = parsed.transactionCost;
+                                rowFee += parsed.transactionCost;
                             }
                         }
                     });
-                    if (rowFee !== null && rowFee > 0) {
+                    if (rowFee > 0) {
+                        rowFee = round2(rowFee);
                         transactionFees[group.id + '_' + row.id] = rowFee;
                     }
                 });
@@ -344,12 +335,18 @@
             recalculateTotalFees();
             updateTransactionFeesDisplay();
             updateDateFeesDisplays();
+
+            const newTotal = round2(totalTransactionFees);
+            if (oldTotal !== newTotal) {
+                console.log(`🔄 Auto-healed fees: ${oldTotal.toFixed(2)} → ${newTotal.toFixed(2)}`);
+            } else {
+                console.log(`✅ Fees rebuilt from live data: ${newTotal.toFixed(2)}`);
+            }
             return totalTransactionFees;
         }
 
         // ========================================
         // DUPLICATE DETECTION — GLOBAL (across ALL dates)
-        // Returns: { code, conflictDate, scope } or null
         // ========================================
         function checkForDuplicateTransactions(dateId) {
             const group = data.find(d => d.id === dateId);
@@ -358,7 +355,6 @@
             const allCols = getAllColumns();
             const targetCodes = [];
 
-            // Step 1 — collect all codes in the date being saved
             group.rows.forEach(row => {
                 allCols.forEach(col => {
                     const transKey = col.key + '_transaction';
@@ -379,7 +375,7 @@
 
             if (targetCodes.length === 0) return null;
 
-            // Step 2 — check duplicates WITHIN the same date
+            // Within same date
             const seen = {};
             for (const item of targetCodes) {
                 if (seen[item.code]) {
@@ -392,7 +388,7 @@
                 seen[item.code] = item.rowId;
             }
 
-            // Step 3 — check duplicates ACROSS all other dates
+            // Across other dates
             for (const otherGroup of data) {
                 if (otherGroup.id === dateId) continue;
 
@@ -423,7 +419,6 @@
 
         // ========================================
         // LIVE CHECK — is this code used on ANY other date?
-        // Returns the conflicting date string or null
         // ========================================
         function isCodeUsedElsewhere(code, currentDateId) {
             if (!code || code.trim() === '') return null;
@@ -450,7 +445,7 @@
         }
 
         // ========================================
-        // HIGHLIGHT DUPLICATE — visual rejection
+        // HIGHLIGHT DUPLICATE
         // ========================================
         function highlightDuplicateRows(code) {
             if (!code) return;
@@ -983,32 +978,93 @@
 
     // ========================================
     // M-PESA PARSING
+    // Handles: Transaction cost, Fee, Charge, Cost, and the word "Transactions"
+    // Strict code detection (8-15 uppercase alphanumerics, not the word "Transaction")
     // ========================================
-    function parseMpesaMessage(message) {
-        if (!message || message.trim() === '') return null;
-        const r = { amount: null, date: null, time: null, transactionCost: null, fullMessage: message, transactionCode: null };
+// ========================================
+// M-PESA / BANK MESSAGE PARSER
+// Handles:
+//   • "UI21P5B6OV Confirmed. Ksh1,500.00 ... Transaction cost, Ksh15.00"
+//   • "41800.00 KES was sent to Mary ... MPesa Ref. UI21P5B6OV ... Charges 76.25 KES"
+//   • Fee / Charge / Charges / Cost / Transaction cost — with or without comma/colon
+//   • Currency before OR after amount (Ksh 15 / 15 KES / KSh15.00 / 15.00 KES)
+// ========================================
+function parseMpesaMessage(message) {
+    if (!message || message.trim() === '') return null;
 
-        const c = message.match(/^([A-Z0-9]+)/);
-        if (c) r.transactionCode = c[1];
+    const r = {
+        amount: null,
+        date: null,
+        time: null,
+        transactionCost: null,
+        fullMessage: message,
+        transactionCode: null
+    };
 
-        const a = message.match(/(?:KSh|KES|Ksh|ksh)\s*([\d,]+\.?\d*)\s*(?:sent|received|to|from)?/i);
-        if (a) r.amount = parseFloat(a[1].replace(/,/g, ''));
-
-        const f = message.match(/Transaction\s+cost[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
-        if (f) r.transactionCost = parseFloat(f[1].replace(/,/g, ''));
-        else {
-            const f2 = message.match(/(?:Fee|Charge|Cost)[,:]\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i);
-            if (f2) r.transactionCost = parseFloat(f2[1].replace(/,/g, ''));
-        }
-
-        const d = message.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
-        if (d) r.date = d[1];
-
-        const t = message.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)?/i);
-        if (t) r.time = t[1];
-
-        return r;
+    // ---------- 1. TRANSACTION CODE ----------
+    // a) M-Pesa style: code at the very start
+    const startCode = message.match(/^([A-Z0-9]{8,15})\b/);
+    if (startCode && !/^TRANSACTION/i.test(startCode[1])) {
+        r.transactionCode = startCode[1];
     }
+    // b) Bank style: "MPesa Ref. UI21P5B6OV" or "Ref. UI21P5B6OV"
+    if (!r.transactionCode) {
+        const refMatch = message.match(/(?:MPesa\s+Ref\.?|Ref\.?)\s+([A-Z0-9]{8,15})\b/i);
+        if (refMatch) r.transactionCode = refMatch[1].toUpperCase();
+    }
+    // c) Fallback — any standalone 10-char uppercase alphanumeric
+    if (!r.transactionCode) {
+        const looseMatch = message.match(/\b([A-Z0-9]{10})\b/);
+        if (looseMatch && !/^[A-Z]{4,}$/.test(looseMatch[1])) {
+            r.transactionCode = looseMatch[1];
+        }
+    }
+
+    // ---------- 2. AMOUNT ----------
+    // a) "Ksh1,500.00 sent" / "Ksh1,500.00"
+    const amountKshFirst = message.match(/(?:KSh|KES|Ksh|ksh)\s*([\d,]+\.?\d*)\s*(?:sent|received|to|from|was|paid)?/i);
+    if (amountKshFirst) {
+        r.amount = parseFloat(amountKshFirst[1].replace(/,/g, ''));
+    }
+    // b) "41800.00 KES was sent"  → amount BEFORE currency
+    if (r.amount === null) {
+        const amountKshLast = message.match(/([\d,]+\.?\d*)\s*(?:KSh|KES|Ksh|ksh)\s*(?:was|sent|received|to|from|paid)/i);
+        if (amountKshLast) r.amount = parseFloat(amountKshLast[1].replace(/,/g, ''));
+    }
+
+    // ---------- 3. TRANSACTION FEE / CHARGE ----------
+    // Support every variant we've seen plus a few defensive ones
+    const feePatterns = [
+        // M-Pesa standard: "Transaction cost, Ksh15.00" (comma optional)
+        /Transaction\s+cost\s*[,:]?\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i,
+        // Bank style: "Charges 76.25 KES" (currency AFTER amount, no comma)
+        /Charges?\s*[,:]?\s*([\d,]+\.?\d*)\s*(?:KSh|KES|Ksh|ksh)/i,
+        // "Charge: 53" or "Fee, Ksh 10"
+        /(?:Fee|Charge|Charges|Cost)\s*[,:]?\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i,
+        // "Cost Ksh 10.50"
+        /Cost\s*[,:]?\s*(?:KSh|KES|Ksh|ksh)?\s*([\d,]+\.?\d*)/i
+    ];
+    for (const pat of feePatterns) {
+        const m = message.match(pat);
+        if (m) {
+            const val = parseFloat(m[1].replace(/,/g, ''));
+            if (!isNaN(val)) {
+                r.transactionCost = val;
+                break;
+            }
+        }
+    }
+
+    // ---------- 4. DATE ----------
+    const d = message.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
+    if (d) r.date = d[1];
+
+    // ---------- 5. TIME ----------
+    const t = message.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*(?:AM|PM|EAT)?/i);
+    if (t) r.time = t[1];
+
+    return r;
+}
 
     // ========================================
     // TRANSACTION FEES
@@ -1024,6 +1080,7 @@
     function recalculateTotalFees() {
         totalTransactionFees = 0;
         for (let k in transactionFees) totalTransactionFees += transactionFees[k];
+        totalTransactionFees = round2(totalTransactionFees);
         return totalTransactionFees;
     }
 
@@ -1036,30 +1093,21 @@
         const allCols = getAllColumns();
 
         group.rows.forEach(row => {
-            let rowFee = null;
-
-            const storedKey = group.id + '_' + row.id;
-            if (transactionFees[storedKey] !== undefined && transactionFees[storedKey] > 0) {
-                rowFee = transactionFees[storedKey];
-            } else {
-                allCols.forEach(col => {
-                    const transKey = col.key + '_transaction';
-                    const transVal = row[transKey];
-                    if (transVal && transVal.trim() !== '') {
-                        const parsed = parseMpesaMessage(transVal);
-                        if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
-                            rowFee = parsed.transactionCost;
-                        }
+            let rowFee = 0;
+            allCols.forEach(col => {
+                const transKey = col.key + '_transaction';
+                const transVal = row[transKey];
+                if (transVal && transVal.trim() !== '') {
+                    const parsed = parseMpesaMessage(transVal);
+                    if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
+                        rowFee += parsed.transactionCost;
                     }
-                });
-            }
-
-            if (rowFee !== null && rowFee > 0) {
-                total += rowFee;
-            }
+                }
+            });
+            total += rowFee;
         });
 
-        return Math.round(total * 100) / 100;
+        return round2(total);
     }
 
     function updateDateFeesDisplays() {
@@ -1459,18 +1507,19 @@
         keysToRemove.forEach(k => delete transactionFees[k]);
 
         group.rows.forEach(row => {
-            let rowFee = null;
+            let rowFee = 0;
             allCols.forEach(col => {
                 const transKey = col.key + '_transaction';
                 const transVal = row[transKey];
                 if (transVal && transVal.trim() !== '') {
                     const parsed = parseMpesaMessage(transVal);
                     if (parsed && parsed.transactionCost !== null && parsed.transactionCost > 0) {
-                        rowFee = parsed.transactionCost;
+                        rowFee += parsed.transactionCost;
                     }
                 }
             });
-            if (rowFee !== null && rowFee > 0) {
+            if (rowFee > 0) {
+                rowFee = round2(rowFee);
                 transactionFees[dateId + '_' + row.id] = rowFee;
                 feesCount++;
                 feesTotal += rowFee;
@@ -1636,9 +1685,9 @@
         if (key.endsWith('_transaction')) {
             input.title = value;
 
-            // 🔥 LIVE CROSS-DATE DUPLICATE WARNING
-            const codeMatch = value.trim().match(/^([A-Z0-9]+)/);
-            if (codeMatch && codeMatch[1].length >= 6) {
+            // LIVE CROSS-DATE DUPLICATE WARNING
+            const codeMatch = value.trim().match(/^([A-Z0-9]{8,15})\b/);
+            if (codeMatch && !/^TRANSACTION/i.test(codeMatch[1])) {
                 const conflictDate = isCodeUsedElsewhere(codeMatch[1], dateId);
                 if (conflictDate) {
                     input.classList.add('duplicate-input-warning');
@@ -1668,9 +1717,20 @@
                     } else {
                         row[amountKey] = '';
                     }
-                    if (parsed.transactionCost !== null && parsed.transactionCost > 0) {
-                        row._pendingFee = parsed.transactionCost;
-                        showToast('💳 Fee detected: KSh ' + parsed.transactionCost.toFixed(2), 'info');
+                    // Sum all fees in this row across all columns
+                    let combinedFee = 0;
+                    getAllColumns().forEach(c => {
+                        const tv = row[c.key + '_transaction'];
+                        if (tv && tv.trim() !== '') {
+                            const p = parseMpesaMessage(tv);
+                            if (p && p.transactionCost !== null && p.transactionCost > 0) {
+                                combinedFee += p.transactionCost;
+                            }
+                        }
+                    });
+                    if (combinedFee > 0) {
+                        row._pendingFee = round2(combinedFee);
+                        showToast('💳 Row fee: KSh ' + row._pendingFee.toFixed(2), 'info');
                     } else {
                         row._pendingFee = null;
                     }
@@ -2300,10 +2360,8 @@
                     columnNameEdits = store.columnNameEdits;
                     saveColumnNameEdits();
                 }
-                if (store.transactionFees) {
-                    transactionFees = store.transactionFees || {};
-                    totalTransactionFees = store.totalTransactionFees || 0;
-                }
+                // NOTE: We intentionally ignore store.transactionFees —
+                // rebuildFeesFromData() will recompute it fresh from live transaction codes.
                 if (dateFrom && dateFromInput) dateFromInput.value = dateFrom;
                 if (dateTo && dateToInput)     dateToInput.value   = dateTo;
                 return true;
@@ -2319,6 +2377,8 @@
 
     function initMainApp() {
         if (mainAppInitialized) {
+            // Auto-heal fees every time we come back
+            rebuildFeesFromData();
             render();
             updateSummaryDisplay();
             updateTransactionFeesDisplay();
@@ -2350,6 +2410,7 @@
             }];
         }
 
+        // 🔄 AUTO-HEAL: Always rebuild fees from live transaction codes on load
         rebuildFeesFromData();
         data = sortDataByDate(data);
         render();
@@ -2361,6 +2422,9 @@
         if (SYNC_ENABLED) {
             setTimeout(() => {
                 syncFromCloud(true).then(() => {
+                    // After pulling from cloud, rebuild fees again (auto-heal)
+                    rebuildFeesFromData();
+                    render();
                     setTimeout(() => {
                         updateTotalsOnly();
                         updateSummaryDisplay();
@@ -2387,6 +2451,8 @@
 
         if (syncNowBtn) {
             syncNowBtn.addEventListener('click', function() {
+                // Auto-heal before pushing
+                rebuildFeesFromData();
                 syncToCloud(true);
             });
         }
