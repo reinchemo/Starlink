@@ -215,7 +215,7 @@
                 const { error } = await supabaseClient
                     .from('expenditure_data')
                     .upsert({
-                        id: 1,
+                        id: 2,
                         data: store,
                         updated_by: currentUser ? currentUser.username : 'anonymous',
                         last_updated: new Date().toISOString()
@@ -245,7 +245,7 @@
                 const { data: result, error } = await supabaseClient
                     .from('expenditure_data')
                     .select('data, updated_by, last_updated')
-                    .eq('id', 1)
+                    .eq('id', 2)
                     .single();
 
                 if (error) {
